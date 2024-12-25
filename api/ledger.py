@@ -1,46 +1,15 @@
 import base64
 import io
-import os
 import logging
 from typing import List
-import psycopg2
-from dotenv import load_dotenv
 import pandas as pd
-
-# Load environment variables from .env
-load_dotenv()
-
-# Fetch variables
-USER = os.getenv("user")
-PASSWORD = os.getenv("password")
-HOST = os.getenv("host")
-PORT = os.getenv("port")
-DBNAME = os.getenv("dbname")
-
-# Connect to the database
-connection = psycopg2.connect(
-    user=USER, password=PASSWORD, host=HOST, port=PORT, dbname=DBNAME
-)
-connection.set_session(autocommit=True)
-cursor = connection.cursor()
-
-
-class LedgerPlayer:
-    # Unique name/ID of the player
-    name: str
-    # Poker now IDs
-    pokerNowIDs: List[str]  # Poker now names
-    pokerNowNames: List[str]
-    # If populated, this is an unknown player that is new or needs merging
-    suggestedNameMatch: str
-
-
-MOCK_PLACEHOLDER_DB_TO_BE_DELETED = {}
+from api.players import _get_player_id_by_poker_now_id, _create_player
+from api.common import create_connection
 
 
 # Create a new ledger from a CSV file.
 # Returns: the new ledger's ID, and a list of players with their verified match, or a suggested match based on user name
-def new_ledger(filename: str, csv_raw: str) -> (str, List[LedgerPlayer]):
+def new_ledger(filename: str, csv_raw: str):
     content_type, content_string = csv_raw.split(",")
     decoded = base64.b64decode(content_string)
 
@@ -48,14 +17,27 @@ def new_ledger(filename: str, csv_raw: str) -> (str, List[LedgerPlayer]):
     df = pd.read_csv(io.StringIO(decoded.decode("utf-8")))
     session_start = str(pd.to_datetime(df["session_start_at"]).min())
 
-    cursor.execute(
-        "INSERT INTO ledgers (pokernow_ledger_id,session_start_at,published) VALUES ('%s','%s','0')"
-        % (ledger_id, session_start)
-    )
+    with create_connection() as connection:
+        cursor = connection.cursor()
+        cursor.execute(
+            "INSERT INTO ledgers (pokernow_ledger_id,session_start_at,published) VALUES ('%s','%s','0')"
+            % (ledger_id, session_start)
+        )
 
-    for index, row in df.iterrows():
-        player_id_or_none = _get_player_id_by_poker_now_id(row["player_id"])
-
+        for index, row in df.iterrows():
+            player_id = _get_player_id_by_poker_now_id(cursor, row["player_id"])
+            if player_id is None:
+                player_id = _create_player(
+                    cursor, row["player_id"], row["player_nickname"]
+                )
+            _create_ledger_row(
+                cursor,
+                ledger_id,
+                player_id,
+                row["session_start_at"],
+                row["buy_in"],
+                row["stack"],
+            )
     return ledger_id
 
 
@@ -69,16 +51,15 @@ def _get_ledger_id(file_name: str):
     return ledger_id
 
 
-def _get_player_id_by_poker_now_id(poker_now_id: str) -> int:
+def _create_ledger_row(
+    cursor,
+    pokernow_ledger_id: str,
+    player_id: str,
+    session_start: str,
+    buy_in: int,
+    stack: int,
+):
     cursor.execute(
-        "SELECT player_id FROM pokernowids WHERE pokernow_id = '%s'"
-        % (poker_now_id)
+        "INSERT INTO ledgerrows (pokernow_ledger_id,player_id,session_start,buy_in,stack) VALUES ('%s','%s','%s','%s','%s')"
+        % (pokernow_ledger_id, player_id, session_start, buy_in, stack)
     )
-    result = cursor.fetchone()
-    return None if result is None else result[0]
-
-
-# def _create_player(poker_now_id, poker_now_name, first_name="New", last_name="Player") -> int:
-#     cursor.execute("INSERT INTO players (firstname,lastname) VALUES ('%s', '%s') RETURNING id" & (first_name, last_name))
-#     player_id = cursor.fetchone()[0]
-#     cursor.execute("INSERT INTO pokernowids (player_id,pokernow_id) VALUES ('%s','%s')")

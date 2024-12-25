@@ -3,6 +3,7 @@ from dash import dcc, html, Input, Output, callback, State
 import dash_bootstrap_components as dbc
 import hashlib
 from api.ledger import new_ledger
+from api.players import get_unresolved_players
 
 PASSWORD_SHA512_HASH = "e09ae4f8c4448c14043ccd599af1285655960e2d200aa3e24f6b3d3626eefc3469c0faf0cd5688bee373f7251148f18a158905ed74cff7461248a8531255750e"
 
@@ -28,7 +29,7 @@ upload_input = html.Div(
             id="ledger_upload",
             children=html.Div(["Drag and Drop or ", html.A("Select Files")]),
             style={
-                "width": "100%",
+                "width": "50%",
                 "height": "60px",
                 "lineHeight": "60px",
                 "borderWidth": "1px",
@@ -38,6 +39,9 @@ upload_input = html.Div(
                 "margin": "10px",
             },
         ),
+        html.H3("Add or Merge Players"),
+        dbc.Button("Refresh", color="primary", id="unresolved_players_refresh"),
+        html.Div(id="unresolved_players"),
     ]
 )
 
@@ -75,7 +79,6 @@ def update_authed_content(a):
 
 
 @callback(
-    Output(component_id="ledger_upload", component_property="style"),
     Output(component_id="error_dialog", component_property="displayed"),
     Output(component_id="error_dialog", component_property="message"),
     Input(component_id="ledger_upload", component_property="contents"),
@@ -85,7 +88,19 @@ def on_ledger_upload(contents, filename):
     if contents is not None:
         try:
             new_ledger(filename, contents)
-            return {"display": "none"}, False, ""
+            return False, ""
         except Exception as error:
-            return {}, True, str(error)
-    return {}, False, ""
+            return True, str(error)
+    return False, ""
+
+
+@callback(
+  Output(component_id="unresolved_players", component_property="children"),
+  Input(component_id="unresolved_players_refresh", component_property="n_clicks"))
+def on_testing_clicked(n_clicks):
+  unresolved_players = get_unresolved_players()
+  return [
+    dbc.Row([dbc.Col(
+      html.B(", ".join(x.pokernow_names))
+    )]) for x in unresolved_players
+  ]
