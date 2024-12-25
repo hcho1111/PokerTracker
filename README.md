@@ -8,7 +8,7 @@ The frontend is built with [Plotly Dash](https://dash.plotly.com/). To set up a 
 
 1. Run `python -m venv venv`
 2. Run `. venv/bin/activate`.
-3. Run `python install -r requirements.txt`
+3. Run `pip install -r requirements.txt`
 4. Run `python app.py`
 
 ## Database
