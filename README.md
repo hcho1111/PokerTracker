@@ -6,9 +6,10 @@ PokerNow analytics tool for tracking and more efficient book keeping built in py
 
 The frontend is built with [Plotly Dash](https://dash.plotly.com/). To set up a dev environment:
 
-1. Run `source venv/bin/activate`.
-2. Run `python install -r requirements.txt`
-3. Run `python app.py`
+1. Run `python -m venv venv`
+2. Run `. venv/bin/activate`.
+3. Run `python install -r requirements.txt`
+4. Run `python app.py`
 
 ## Database
 
