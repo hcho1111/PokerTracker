@@ -1,9 +1,10 @@
 import dash
-from dash import dcc, html, Input, Output, callback, State
+from dash import dcc, html, Input, Output, callback, State, MATCH
 import dash_bootstrap_components as dbc
 import hashlib
 from api.ledger import new_ledger
-from api.players import get_unresolved_players
+from api.players import get_unresolved_players, UnresolvedPlayer
+import json
 
 PASSWORD_SHA512_HASH = "e09ae4f8c4448c14043ccd599af1285655960e2d200aa3e24f6b3d3626eefc3469c0faf0cd5688bee373f7251148f18a158905ed74cff7461248a8531255750e"
 
@@ -22,7 +23,7 @@ password_input = dbc.Row(
 
 wrong_password = html.B("Wrong password")
 
-upload_input = html.Div(
+authed_content = html.Div(
     [
         html.H3("Upload new ledger (.csv)"),
         dcc.Upload(
@@ -39,9 +40,22 @@ upload_input = html.Div(
                 "margin": "10px",
             },
         ),
-        html.H3("Add or Merge Players"),
-        dbc.Button("Refresh", color="primary", id="unresolved_players_refresh"),
+        html.Div(
+            [
+                html.H3("Add or Merge Players", style={"marginBottom": "0"}),
+                dbc.Button(
+                    "Refresh",
+                    color="secondary",
+                    id="unresolved_players_refresh",
+                    outline=True,
+                    size="sm",
+                    style={"marginLeft": "20px"},
+                ),
+            ],
+            style={"flexDirection": "row", "display": "flex", "marginBottom": "20px"},
+        ),
         html.Div(id="unresolved_players"),
+        dcc.Store(id="unresolved_players_store"),
     ]
 )
 
@@ -75,7 +89,7 @@ def on_password_submit(password, submit_n_clicks):
     Input(component_id="root", component_property="children"),
 )
 def update_authed_content(a):
-    return upload_input
+    return authed_content
 
 
 @callback(
@@ -95,12 +109,76 @@ def on_ledger_upload(contents, filename):
 
 
 @callback(
-  Output(component_id="unresolved_players", component_property="children"),
-  Input(component_id="unresolved_players_refresh", component_property="n_clicks"))
-def on_testing_clicked(n_clicks):
-  unresolved_players = get_unresolved_players()
-  return [
-    dbc.Row([dbc.Col(
-      html.B(", ".join(x.pokernow_names))
-    )]) for x in unresolved_players
-  ]
+    Output(component_id="unresolved_players_store", component_property="data"),
+    Input(component_id="unresolved_players_refresh", component_property="n_clicks"),
+)
+def on_unresolved_players_refresh(n_clicks):
+    return json.dumps([x.to_json() for x in get_unresolved_players()])
+
+
+@callback(
+    Output(component_id="unresolved_players", component_property="children"),
+    Input(component_id="unresolved_players_store", component_property="data"),
+)
+def update_unresolved_players(data):
+    if data is None:
+        return []
+    unresolved_players_dicts = json.loads(data)
+    unresolved_players = [
+        UnresolvedPlayer.from_json(x) for x in unresolved_players_dicts
+    ]
+    return [
+        html.Div(
+            [
+                dbc.Row(
+                    [
+                        dbc.Col(html.B(", ".join(x.pokernow_names))),
+                        dbc.Col(
+                            dbc.Button(
+                                "Create new player",
+                                id={"type": "create_new_player_button", "index": i},
+                            )
+                        ),
+                        dbc.Col(
+                            dbc.Button("Merge with a player", id="merge_player_%s" % i)
+                        ),
+                    ]
+                ),
+                html.Hr(),
+                dbc.Modal(
+                    [
+                        dbc.ModalHeader(dbc.ModalTitle("Create a new player")),
+                        dbc.ModalBody(id="create_new_player_model_content"),
+                        dbc.ModalFooter(
+                            dbc.Button(
+                                "Cancel", id="close", className="ms-auto", n_clicks=0
+                            )
+                        ),
+                    ],
+                    id={"type": "create_new_player_model", "index": i},
+                    size="lg",
+                    is_open=False,
+                    centered=True,
+                ),
+            ]
+        )
+        for i, x in enumerate(unresolved_players)
+    ]
+
+
+@callback(
+    Output(
+        component_id={"type": "create_new_player_modal", "index": MATCH},
+        component_property="is_open",
+    ),
+    Input(
+        component_id={"type": "create_new_player_button", "index": MATCH},
+        component_property="n_clicks",
+    ),
+    State(
+        component_id={"type": "create_new_player_button", "index": MATCH},
+        component_property="id",
+    ),
+)
+def update_create_new_player_model(n_clicks, id):
+    return True

@@ -1,5 +1,6 @@
 from api.common import create_connection
 from typing import List
+import json
 
 NEW_PLAYER_DEFAULT_FIRST_NAME = "New"
 NEW_PLAYER_DEFAULT_LAST_NAME = "Player"
@@ -7,20 +8,30 @@ NEW_PLAYER_DEFAULT_LAST_NAME = "Player"
 
 # Player that is either new (needs name to be updated) or needs merging with an existing player.
 class UnresolvedPlayer:
-    class MergeSuggestion:
-        def __init__(self, player_id, name):
-            self.player_id = player_id
-            self.name = name
-        player_id: str
-        name: str
+    player_id: int
+    # pokernow_names: List[str]
+    merge_suggestion_player_id: str
+    merge_suggestion_name: str
 
-    def __init__(self, player_id: int, pokernow_names: List[str], suggestion: MergeSuggestion):
+    def __init__(
+        self,
+        player_id: int,
+        pokernow_names: List[str],
+        merge_suggestion_player_id: str,
+        merge_suggestion_name: str,
+    ):
         self.player_id = player_id
         self.pokernow_names = pokernow_names
-        self.suggestion = suggestion
-    player_id: int
-    pokernow_names: List[str]
-    suggestion: MergeSuggestion
+        self.merge_suggestion_player_id = merge_suggestion_player_id
+        self.merge_suggestion_name = merge_suggestion_name
+
+    def to_json(self):
+        return json.dumps(self, default=lambda o: o.__dict__)
+
+    @staticmethod
+    def from_json(json_str):
+        data = json.loads(json_str)
+        return UnresolvedPlayer(**data)
 
 
 def get_unresolved_players():
@@ -38,21 +49,32 @@ def get_unresolved_players():
                 % (player_id)
             )
             pokernow_names = [x[0] for x in cursor.fetchall()]
-            suggestion = _find_suggestion(cursor, pokernow_names)
-            unresolved_players.append(UnresolvedPlayer(player_id, pokernow_names, suggestion))
+            suggested_player_id, suggested_pokernow_name = _find_suggestion(
+                cursor, pokernow_names
+            )
+            unresolved_players.append(
+                UnresolvedPlayer(
+                    player_id,
+                    pokernow_names,
+                    suggested_player_id,
+                    suggested_pokernow_name,
+                )
+            )
         return unresolved_players
 
 
-def _find_suggestion(cursor, pokernow_names: List[str]) -> UnresolvedPlayer.MergeSuggestion:
-    if len(pokernow_names) == 0: return None
+def _find_suggestion(cursor, pokernow_names: List[str]) -> (str, str):
+    if len(pokernow_names) == 0:
+        return None, None
     cursor.execute(
-        "SELECT players.id,pokernow_name FROM players JOIN pokernowaliases ON players.id=player_id WHERE pokernow_name IN (%s)" %
-        ",".join(["'" + x + "'" for x in pokernow_names]),
+        "SELECT players.id,pokernow_name FROM players JOIN pokernowaliases ON players.id=player_id WHERE pokernow_name IN (%s)"
+        % ",".join(["'" + x + "'" for x in pokernow_names]),
     )
     result = cursor.fetchone()
-    if result is None: return None
+    if result is None:
+        return None, None
     player_id, pokernow_name = result
-    return UnresolvedPlayer.MergeSuggestion(player_id, pokernow_name)
+    return player_id, pokernow_name
 
 
 def _get_player_id_by_poker_now_id(cursor, poker_now_id: str) -> int:
