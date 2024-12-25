@@ -37,6 +37,7 @@ class LedgerPlayer:
 
 MOCK_PLACEHOLDER_DB_TO_BE_DELETED = {}
 
+
 # Create a new ledger from a CSV file.
 # Returns: the new ledger's ID, and a list of players with their verified match, or a suggested match based on user name
 def new_ledger(filename: str, csv_raw: str) -> (str, List[LedgerPlayer]):
@@ -52,14 +53,32 @@ def new_ledger(filename: str, csv_raw: str) -> (str, List[LedgerPlayer]):
         % (ledger_id, session_start)
     )
 
+    for index, row in df.iterrows():
+        player_id_or_none = _get_player_id_by_poker_now_id(row["player_id"])
+
     return ledger_id
 
 
-def _get_ledger_id(filename: str):
+def _get_ledger_id(file_name: str):
     # Strip the 'ledger_' prefix
-    ledger_id = filename.split("_")[-1]
+    ledger_id = file_name.split("_")[-1]
     # Strip any other ' ' shennanagans (ie. ' (1)' from downloading multiple copies)
     ledger_id = ledger_id.split(" ")[0]
     # Strip the file extension '.csv'
     ledger_id = ledger_id.split(".")[0]
     return ledger_id
+
+
+def _get_player_id_by_poker_now_id(poker_now_id: str) -> int:
+    cursor.execute(
+        "SELECT player_id FROM pokernowids WHERE pokernow_id = '%s'"
+        % (poker_now_id)
+    )
+    result = cursor.fetchone()
+    return None if result is None else result[0]
+
+
+# def _create_player(poker_now_id, poker_now_name, first_name="New", last_name="Player") -> int:
+#     cursor.execute("INSERT INTO players (firstname,lastname) VALUES ('%s', '%s') RETURNING id" & (first_name, last_name))
+#     player_id = cursor.fetchone()[0]
+#     cursor.execute("INSERT INTO pokernowids (player_id,pokernow_id) VALUES ('%s','%s')")

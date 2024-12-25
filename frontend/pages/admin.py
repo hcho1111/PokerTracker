@@ -84,8 +84,8 @@ def update_authed_content(a):
 def on_ledger_upload(contents, filename):
     if contents is not None:
         try:
-          new_ledger(filename, contents)
+            new_ledger(filename, contents)
+            return {"display": "none"}, False, ""
         except Exception as error:
-          return {}, True, str(error)
-        return {"display": "none"}, False, ""
+            return {}, True, str(error)
     return {}, False, ""
