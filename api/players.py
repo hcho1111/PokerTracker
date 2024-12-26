@@ -7,9 +7,9 @@ NEW_PLAYER_DEFAULT_LAST_NAME = "Player"
 
 
 # Player that is either new (needs name to be updated) or needs merging with an existing player.
-class UnresolvedPlayer:
+class UnpublishedPlayer:
     player_id: int
-    # pokernow_names: List[str]
+    pokernow_names: List[str]
     merge_suggestion_player_id: str
     merge_suggestion_name: str
 
@@ -31,17 +31,23 @@ class UnresolvedPlayer:
     @staticmethod
     def from_json(json_str):
         data = json.loads(json_str)
-        return UnresolvedPlayer(**data)
+        return UnpublishedPlayer(**data)
 
 
-def get_unresolved_players():
+def get_published_players():
     with create_connection() as connection:
         cursor = connection.cursor()
         cursor.execute(
-            "SELECT id FROM players WHERE firstname='%s' and lastname='%s'"
-            % (NEW_PLAYER_DEFAULT_FIRST_NAME, NEW_PLAYER_DEFAULT_LAST_NAME)
+            "SELECT firstname,lastname,id FROM players WHERE published='1' ORDER BY firstname"
         )
-        unresolved_players = []
+        return cursor.fetchall()
+
+
+def get_unpublished_players():
+    with create_connection() as connection:
+        cursor = connection.cursor()
+        cursor.execute("SELECT id FROM players WHERE published='0'")
+        unpublished_players = []
         for player_id_row in cursor.fetchall():
             player_id = player_id_row[0]
             cursor.execute(
@@ -52,29 +58,52 @@ def get_unresolved_players():
             suggested_player_id, suggested_pokernow_name = _find_suggestion(
                 cursor, pokernow_names
             )
-            unresolved_players.append(
-                UnresolvedPlayer(
+            unpublished_players.append(
+                UnpublishedPlayer(
                     player_id,
                     pokernow_names,
                     suggested_player_id,
                     suggested_pokernow_name,
                 )
             )
-        return unresolved_players
+        return unpublished_players
+
+
+def publish_player(player_id: int, first_name: str, last_name: str, venmo: str):
+    with create_connection() as connection:
+        cursor = connection.cursor()
+        cursor.execute(
+            "UPDATE players SET firstname = '%s', lastname ='%s', venmo = '%s', published = '1' WHERE id = '%s'"
+            % (first_name, last_name, venmo, player_id)
+        )
+
+
+def merge_player(player_id_to_merge, player_id):
+    with create_connection() as connection:
+        cursor = connection.cursor()
+        cursor.execute(
+            "UPDATE pokernowaliases SET player_id='%s' WHERE player_id='%s'"
+            % (player_id, player_id_to_merge)
+        )
+        cursor.execute(
+            "UPDATE ledgerrows SET player_id='%s' WHERE player_id='%s'"
+            % (player_id, player_id_to_merge)
+        )
+        cursor.execute("DELETE FROM players WHERE id='%s'" % player_id_to_merge)
 
 
 def _find_suggestion(cursor, pokernow_names: List[str]) -> (str, str):
     if len(pokernow_names) == 0:
         return None, None
     cursor.execute(
-        "SELECT players.id,pokernow_name FROM players JOIN pokernowaliases ON players.id=player_id WHERE pokernow_name IN (%s)"
+        "SELECT players.id,firstname,lastname FROM players JOIN pokernowaliases ON players.id=player_id WHERE pokernow_name IN (%s) AND published='1'"
         % ",".join(["'" + x + "'" for x in pokernow_names]),
     )
     result = cursor.fetchone()
     if result is None:
         return None, None
-    player_id, pokernow_name = result
-    return player_id, pokernow_name
+    player_id, firstname, lastname = result
+    return player_id, " ".join([firstname, lastname])
 
 
 def _get_player_id_by_poker_now_id(cursor, poker_now_id: str) -> int:

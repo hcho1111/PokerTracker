@@ -5,6 +5,7 @@ from typing import List
 import pandas as pd
 from api.players import _get_player_id_by_poker_now_id, _create_player
 from api.common import create_connection
+from numpy import nan
 
 
 # Create a new ledger from a CSV file.
@@ -43,7 +44,7 @@ def new_ledger(filename: str, csv_raw: str):
 
 def _get_ledger_id(file_name: str):
     # Strip the 'ledger_' prefix
-    ledger_id = file_name.split("_")[-1]
+    ledger_id = file_name[7:]
     # Strip any other ' ' shennanagans (ie. ' (1)' from downloading multiple copies)
     ledger_id = ledger_id.split(" ")[0]
     # Strip the file extension '.csv'
@@ -59,7 +60,10 @@ def _create_ledger_row(
     buy_in: int,
     stack: int,
 ):
+    parsed_session_start = (
+        ("'" + str(session_start) + "'") if (str(session_start) != "nan") else "NULL"
+    )
     cursor.execute(
-        "INSERT INTO ledgerrows (pokernow_ledger_id,player_id,session_start,buy_in,stack) VALUES ('%s','%s','%s','%s','%s')"
-        % (pokernow_ledger_id, player_id, session_start, buy_in, stack)
+        "INSERT INTO ledgerrows (pokernow_ledger_id,player_id,session_start,buy_in,stack) VALUES ('%s','%s',%s,'%s','%s')"
+        % (pokernow_ledger_id, player_id, parsed_session_start, buy_in, stack)
     )
