@@ -21,7 +21,7 @@ def new_ledger(filename: str, csv_raw: str):
     with create_connection() as connection:
         cursor = connection.cursor()
         cursor.execute(
-            "INSERT INTO ledgers (pokernow_ledger_id,session_start_at,published) VALUES ('%s','%s','0')"
+            "INSERT INTO ledgers (pokernow_ledger_id,session_start_at) VALUES ('%s','%s')"
             % (ledger_id, session_start)
         )
 
@@ -37,9 +37,27 @@ def new_ledger(filename: str, csv_raw: str):
                 player_id,
                 row["session_start_at"],
                 row["buy_in"],
-                row["stack"],
+                row["net"],
             )
     return ledger_id
+
+
+def get_leaderboard(by_date="2020-01-01"):
+    with create_connection() as connection:
+        cursor = connection.cursor()
+        cursor.execute(
+            """
+                SELECT firstname,lastname,SUM(net) as total_net
+                FROM ledgerrows
+                INNER JOIN players
+                    ON players.id = ledgerrows.player_id
+                WHERE ledgerrows.session_start > '%s'::date
+                GROUP BY firstname, lastname
+                ORDER BY total_net DESC;
+            """
+            % (by_date)
+        )
+        return cursor.fetchall()
 
 
 def _get_ledger_id(file_name: str):
@@ -58,12 +76,12 @@ def _create_ledger_row(
     player_id: str,
     session_start: str,
     buy_in: int,
-    stack: int,
+    net: int,
 ):
     parsed_session_start = (
         ("'" + str(session_start) + "'") if (str(session_start) != "nan") else "NULL"
     )
     cursor.execute(
-        "INSERT INTO ledgerrows (pokernow_ledger_id,player_id,session_start,buy_in,stack) VALUES ('%s','%s',%s,'%s','%s')"
-        % (pokernow_ledger_id, player_id, parsed_session_start, buy_in, stack)
+        "INSERT INTO ledgerrows (pokernow_ledger_id,player_id,session_start,buy_in,net) VALUES ('%s','%s',%s,'%s','%s')"
+        % (pokernow_ledger_id, player_id, parsed_session_start, buy_in, net)
     )
