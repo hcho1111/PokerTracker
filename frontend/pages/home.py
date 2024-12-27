@@ -53,6 +53,7 @@ def get_top_username_counts():
                 html.Tr(
                     [
                         html.Td(x[0] + " " + x[1]),
+                        html.Td(x[2]),
                     ]
                 )
                 for i, x in enumerate(get_top_offenders())
@@ -63,9 +64,9 @@ def get_top_username_counts():
 
 top_username_count_card = dbc.Card(
     [
-        html.H3("User IDs Count Top 5 Offenders 😠"),
+        html.H3("User IDs Count - Top Offenders 😠"),
         dbc.FormText(
-            "(Please make a pokernow account to make paying out easier, especially you Ming)",
+            "(Please make a pokernow account to make paying out easier, especially you Ming!)",
             color="secondary",
             style={"marginTop": "-8px"},
         ),
@@ -75,7 +76,7 @@ top_username_count_card = dbc.Card(
             bordered=True,
             hover=True,
             responsive=True,
-            style={"marginTop": "8px"},
+            style={"marginTop": "16px"},
         ),
     ]
 )
@@ -83,15 +84,18 @@ top_username_count_card = dbc.Card(
 
 def get_recent_ledgers_children():
     data = get_recent_ledgers()
+    merged_nets = [x[4] for x in data] + [x[7] for x in data]
+    abs_max = max([abs(x) for x in merged_nets])
     discrete_colors = sample_colorscale(
         [
-            [0, "rgb(219, 231, 219)"],  # Green
+            [0, "rgb(197, 67, 60)"],  # Red
+            [0.5, "rgb(255, 255, 255)"],  # White
             [1, "rgb(120, 166, 90)"],  # Green
         ],
-        minmax_scale([x[4] for x in data]),
+        minmax_scale(merged_nets + [-abs_max] + [abs_max]),
     )
 
-    return [html.Thead(html.Tr([html.Th("Date"), html.Th("MVP"), html.Th("Net")]))] + [
+    return [html.Thead(html.Tr([html.Th("Date"), html.Th("🦈 Shark"), html.Th("Net"), html.Th("🐟 Fish"), html.Th("Net")]))] + [
         html.Tbody(
             [
                 html.Tr(
@@ -103,12 +107,22 @@ def get_recent_ledgers_children():
                                 href="https://www.pokernow.club/games/%s" % x[0],
                             )
                         ),
-                        html.Td("%s %s" % (x[2], x[3])),
+                                         html.Td(", ".join([
+                            "%s %s" % (first, last) for first, last in zip(x[2].split(', '), x[3].split(', '))])),
                         html.Td(
                             "{:.2f}".format(x[4] / 100),
                             style={
                                 "textAlign": "end",
                                 "backgroundColor": discrete_colors[i],
+                            },
+                        ),
+                        html.Td(", ".join([
+                            "%s %s" % (first, last) for first, last in zip(x[5].split(', '), x[6].split(', '))])),
+                        html.Td(
+                            "{:.2f}".format(x[7] / 100),
+                            style={
+                                "textAlign": "end",
+                                "backgroundColor": discrete_colors[i + len(data)],
                             },
                         ),
                     ]

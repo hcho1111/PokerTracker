@@ -74,11 +74,15 @@ def get_recent_ledgers():
         cursor = connection.cursor()
         cursor.execute(
             """
-                SELECT pokernow_ledger_id, session_start_at, winner.firstname as winner_firstname, winner.lastname as winner_lastname, winner.net as winner_net
-                FROM ledgers, LATERAL get_ledger_winner(pokernow_ledger_id) winner
+                SELECT pokernow_ledger_id, session_start_at,
+                    winner.first_names as winner_first_names, winner.last_names as winner_last_names, winner.net as winner_net,
+                    fish.first_names as fish_first_names, fish.last_names as fish_last_names, fish.net as fish_net
+                FROM ledgers,
+                LATERAL get_ledger_winner(pokernow_ledger_id) winner, 
+                LATERAL get_ledger_fish(pokernow_ledger_id) fish
                 WHERE is_ledger_published(pokernow_ledger_id)
                 ORDER BY session_start_at DESC
-                LIMIT 20;
+                LIMIT 10;
             """
         )
         return cursor.fetchall()

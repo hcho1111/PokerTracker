@@ -97,12 +97,14 @@ def get_top_offenders():
         cursor = connection.cursor()
         cursor.execute(
             """
+                SELECT * FROM (
                 SELECT firstname, lastname, COUNT(DISTINCT(pokernow_id)) as count
                 FROM pokernowaliases
-                INNER JOIN players ON player_id = players.id
+                    INNER JOIN players ON player_id = players.id
                 GROUP BY firstname, lastname 
                 ORDER BY count DESC
-                LIMIT 5;
+                ) as counts
+                WHERE counts.count > 5
             """
         )
         return cursor.fetchall()

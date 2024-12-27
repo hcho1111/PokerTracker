@@ -110,7 +110,7 @@ def on_ledger_upload(contents, filename):
     if contents is not None:
         try:
             new_ledger(filename, contents)
-            return False, ""
+            return True, "Success"
         except Exception as error:
             return True, str(error)
     return False, ""
@@ -127,10 +127,11 @@ def on_ledger_upload(contents, filename):
         component_id={"type": "merge_player_modal", "index": ALL},
         component_property="is_open",
     ),
+    Input(component_id="error_dialog", component_property="displayed"),
     State(component_id="unpublished_players_store", component_property="data"),
 )
 def on_unpublished_players_refresh(
-    n_clicks, create_models_open, merge_models_open, previous
+    n_clicks, create_models_open, merge_models_open, dialog_displayed, previous
 ):
     # Refresh after closing modals.
     if len(create_models_open) != 0 and any(create_models_open):
