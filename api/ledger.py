@@ -47,17 +47,26 @@ def get_leaderboard(by_date="2020-01-01"):
         cursor = connection.cursor()
         cursor.execute(
             """
-                SELECT firstname,lastname,SUM(net) as total_net
+                SELECT firstname,lastname,SUM(net) as total_net, COUNT(DISTINCT(pokernow_ledger_id))
                 FROM ledgerrows
                 INNER JOIN players
-                    ON players.id = ledgerrows.player_id
+                    ON players.id = ledgerrows.player_id and is_ledger_published(pokernow_ledger_id)
                 WHERE ledgerrows.session_start > '%s'::date
                 GROUP BY firstname, lastname
                 ORDER BY total_net DESC;
             """
             % (by_date)
         )
-        return cursor.fetchall()
+        leaderboard = cursor.fetchall()
+        cursor.execute(
+            """
+                SELECT count(*), min(session_start_at), max(session_start_at) FROM ledgers
+                WHERE is_ledger_published(pokernow_ledger_id) AND session_start_at > '%s'::date
+            """
+            % (by_date)
+        )
+        n_ledgers, start_date, stop_date = cursor.fetchone()
+        return leaderboard, n_ledgers, start_date, stop_date
 
 
 def _get_ledger_id(file_name: str):

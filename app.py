@@ -12,6 +12,7 @@ app = Dash(
     __name__,
     use_pages=True,
     pages_folder="frontend/pages",
+    assets_folder="frontend/assets",
     external_stylesheets=[dbc.themes.BOOTSTRAP],
     suppress_callback_exceptions=True,
 )
@@ -19,9 +20,10 @@ server = app.server
 
 app.layout = html.Div(
     [
-        html.H1("casino pokernow"),
+        html.H1("casino pokernow", style={"marginBottom": "30px"}),
         dash.page_container,
-    ]
+    ],
+    style={"padding": "30px"},
 )
 
 
