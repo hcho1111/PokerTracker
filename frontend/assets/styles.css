@@ -13,3 +13,11 @@
   border-bottom-left-radius: 0;
   margin-left: -1px;
 }
+
+.card {
+  padding: 20px;
+}
+
+.card > h3 {
+  margin-top: 8px;
+}

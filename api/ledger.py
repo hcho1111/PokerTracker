@@ -69,6 +69,21 @@ def get_leaderboard(by_date="2020-01-01"):
         return leaderboard, n_ledgers, start_date, stop_date
 
 
+def get_recent_ledgers():
+    with create_connection() as connection:
+        cursor = connection.cursor()
+        cursor.execute(
+            """
+                SELECT pokernow_ledger_id, session_start_at, winner.firstname as winner_firstname, winner.lastname as winner_lastname, winner.net as winner_net
+                FROM ledgers, LATERAL get_ledger_winner(pokernow_ledger_id) winner
+                WHERE is_ledger_published(pokernow_ledger_id)
+                ORDER BY session_start_at DESC
+                LIMIT 20;
+            """
+        )
+        return cursor.fetchall()
+
+
 def _get_ledger_id(file_name: str):
     # Strip the 'ledger_' prefix
     ledger_id = file_name[7:]

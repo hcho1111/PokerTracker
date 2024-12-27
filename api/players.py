@@ -92,6 +92,22 @@ def merge_player(player_id_to_merge, player_id):
         cursor.execute("DELETE FROM players WHERE id='%s'" % player_id_to_merge)
 
 
+def get_top_offenders():
+    with create_connection() as connection:
+        cursor = connection.cursor()
+        cursor.execute(
+            """
+                SELECT firstname, lastname, COUNT(DISTINCT(pokernow_id)) as count
+                FROM pokernowaliases
+                INNER JOIN players ON player_id = players.id
+                GROUP BY firstname, lastname 
+                ORDER BY count DESC
+                LIMIT 5;
+            """
+        )
+        return cursor.fetchall()
+
+
 def _find_suggestion(cursor, pokernow_names: List[str]) -> (str, str):
     if len(pokernow_names) == 0:
         return None, None
