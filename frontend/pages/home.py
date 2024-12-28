@@ -1,10 +1,10 @@
 import dash
-from dash import html, Input, Output, dcc, callback
+from dash import html, Input, Output, dcc, callback, State
 import dash_bootstrap_components as dbc
 from api.ledger import get_leaderboard, get_recent_ledgers
 from plotly.express.colors import sample_colorscale
 from sklearn.preprocessing import minmax_scale
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 from api.players import get_top_offenders
 
 dash.register_page(__name__, path="/")
@@ -12,6 +12,9 @@ dash.register_page(__name__, path="/")
 leaderboard_card = dbc.Card(
     [
         html.H3("Leaderboard 📈"),
+        dbc.FormText(
+            "Filter by Time", color="secondary", style={"marginBottom": "4px"}
+        ),
         html.Div(
             [
                 dbc.RadioItems(
@@ -26,21 +29,54 @@ leaderboard_card = dbc.Card(
                         {"label": "1m", "value": 30},
                         {"label": "3m", "value": 90},
                         {"label": "1y", "value": 365},
+                        {"label": "Custom", "value": "custom"},
                     ],
                     value=None,
                 ),
             ],
             className="radio-group",
         ),
+        dcc.DatePickerRange(
+            id="leaderboard_date_filter_range",
+            min_date_allowed=date(1995, 8, 5),
+            style={"marginBottom": "12px", "marginTop": "4px"},
+            max_date_allowed=date.today(),
+            initial_visible_month=date.today() - timedelta(days=7),
+            start_date=date.today() - timedelta(days=7),
+            end_date=date.today(),
+        ),
         dbc.FormText(
-            id="leaderboard_subtitle", color="secondary", style={"marginBottom": "8px"}
+            "Filter by Games Played",
+            color="secondary",
+            style={"marginBottom": "8px", "marginTop": "8px"},
+        ),
+        html.Div(
+            [
+                dcc.Slider(
+                    id="leaderboard_games_slider",
+                    min=0,
+                    max=0,
+                    step=1,
+                    value=0,
+                    marks=None,
+                    tooltip={
+                        "placement": "bottom",
+                        "always_visible": False,
+                        "template": "≥{value}",
+                    },
+                ),
+            ],
+            style={"paddingLeft": "8px"},
         ),
         dbc.Table(
             id="leaderboard_table",
             bordered=True,
             hover=True,
             responsive=True,
-            style={"marginTop": "8px"},
+            style={"marginTop": "16px"},
+        ),
+        dbc.FormText(
+            id="leaderboard_subtitle", color="secondary", style={"marginBottom": "8px"}
         ),
     ],
 )
@@ -95,7 +131,19 @@ def get_recent_ledgers_children():
         minmax_scale(merged_nets + [-abs_max] + [abs_max]),
     )
 
-    return [html.Thead(html.Tr([html.Th("Date"), html.Th("🦈 Shark"), html.Th("Net"), html.Th("🐟 Fish"), html.Th("Net")]))] + [
+    return [
+        html.Thead(
+            html.Tr(
+                [
+                    html.Th("Date"),
+                    html.Th("🦈 Shark"),
+                    html.Th("Net"),
+                    html.Th("🐟 Fish"),
+                    html.Th("Net"),
+                ]
+            )
+        )
+    ] + [
         html.Tbody(
             [
                 html.Tr(
@@ -107,8 +155,16 @@ def get_recent_ledgers_children():
                                 href="https://www.pokernow.club/games/%s" % x[0],
                             )
                         ),
-                                         html.Td(", ".join([
-                            "%s %s" % (first, last) for first, last in zip(x[2].split(', '), x[3].split(', '))])),
+                        html.Td(
+                            ", ".join(
+                                [
+                                    "%s %s." % (first, last[0])
+                                    for first, last in zip(
+                                        x[2].split(", "), x[3].split(", ")
+                                    )
+                                ]
+                            )
+                        ),
                         html.Td(
                             "{:.2f}".format(x[4] / 100),
                             style={
@@ -116,8 +172,16 @@ def get_recent_ledgers_children():
                                 "backgroundColor": discrete_colors[i],
                             },
                         ),
-                        html.Td(", ".join([
-                            "%s %s" % (first, last) for first, last in zip(x[5].split(', '), x[6].split(', '))])),
+                        html.Td(
+                            ", ".join(
+                                [
+                                    "%s %s." % (first, last[0])
+                                    for first, last in zip(
+                                        x[5].split(", "), x[6].split(", ")
+                                    )
+                                ]
+                            )
+                        ),
                         html.Td(
                             "{:.2f}".format(x[7] / 100),
                             style={
@@ -135,7 +199,7 @@ def get_recent_ledgers_children():
 
 recent_ledgers_card = dbc.Card(
     [
-        html.H3("Recent Ledgers ⏰"),
+        html.H3("Ledgers 📒"),
         dbc.Table(
             id="recent_ledgers",
             children=get_recent_ledgers_children(),
@@ -165,8 +229,32 @@ layout = dbc.Row(
 )
 
 
-@callback(Output("leaderboard_store", "data"), Input("leaderboard_time_range", "value"))
-def update_leaderboard_store(value):
+@callback(
+    Output("leaderboard_games_slider", "marks"),
+    Input("leaderboard_games_slider", "max"),
+)
+def update_leaderboard_games_slider_marks(slider_max):
+    return {0: "≥0 games", slider_max: "≥%s" % slider_max}
+
+
+@callback(
+    Output("leaderboard_games_slider", "max"),
+    Input("leaderboard_store", "data"),
+)
+def update_leaderboard_games_slider_max(leaderboard_store):
+    data, _, _, _ = leaderboard_store
+    return max([x[3] for x in data])
+
+
+@callback(
+    Output("leaderboard_store", "data"),
+    Input("leaderboard_time_range", "value"),
+    Input("leaderboard_date_filter_range", "start_date"),
+    Input("leaderboard_date_filter_range", "end_date"),
+)
+def update_leaderboard_store(value, start_date, end_date):
+    if value == "custom":
+        return get_leaderboard(start_date, end_date)
     return get_leaderboard(
         "2020-01-01"
         if value is None
@@ -174,8 +262,12 @@ def update_leaderboard_store(value):
     )
 
 
-@callback(Output("leaderboard_table", "children"), Input("leaderboard_store", "data"))
-def update_leaderboard_table(leaderboard_store):
+@callback(
+    Output("leaderboard_table", "children"),
+    Input("leaderboard_store", "data"),
+    Input("leaderboard_games_slider", "value"),
+)
+def update_leaderboard_table(leaderboard_store, games_filter):
     data, _, _, _ = leaderboard_store
     abs_max = max([abs(x[2]) for x in data])
     nets = [-abs_max] + [x[2] for x in data] + [abs_max]
@@ -187,6 +279,10 @@ def update_leaderboard_table(leaderboard_store):
         ],
         minmax_scale(nets),
     )
+    filtered_data = []
+    for row in data:
+        if row[3] >= games_filter:
+            filtered_data.append(row)
 
     return [
         html.Thead(html.Tr([html.Th("Player"), html.Th("Games"), html.Th("Net")]))
@@ -206,7 +302,7 @@ def update_leaderboard_table(leaderboard_store):
                         ),
                     ]
                 )
-                for i, x in enumerate(data)
+                for i, x in enumerate(filtered_data)
             ]
         )
     ]
@@ -222,3 +318,14 @@ def update_leaderboard_subtitle(leaderboard_store):
         datetime.fromisoformat(start_date).strftime("%m/%d/%y"),
         datetime.fromisoformat(end_date).strftime("%m/%d/%y"),
     )
+
+
+@callback(
+    Output("leaderboard_date_filter_range", "style"),
+    Input("leaderboard_time_range", "value"),
+    State("leaderboard_date_filter_range", "style"),
+)
+def update_date_filter_visibility(value, style):
+    if value == "custom":
+        return {**style, "display": "inline"}
+    return {**style, "display": "none"}

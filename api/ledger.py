@@ -6,6 +6,7 @@ import pandas as pd
 from api.players import _get_player_id_by_poker_now_id, _create_player
 from api.common import create_connection
 from numpy import nan
+from datetime import date, timedelta
 
 
 # Create a new ledger from a CSV file.
@@ -42,7 +43,7 @@ def new_ledger(filename: str, csv_raw: str):
     return ledger_id
 
 
-def get_leaderboard(by_date="2020-01-01"):
+def get_leaderboard(by_date="2020-01-01", to_date=date.today() + timedelta(days=1)):
     with create_connection() as connection:
         cursor = connection.cursor()
         cursor.execute(
@@ -51,19 +52,19 @@ def get_leaderboard(by_date="2020-01-01"):
                 FROM ledgerrows
                 INNER JOIN players
                     ON players.id = ledgerrows.player_id and is_ledger_published(pokernow_ledger_id)
-                WHERE ledgerrows.session_start > '%s'::date
+                WHERE ledgerrows.session_start > '%s'::date AND ledgerrows.session_start < '%s'::date
                 GROUP BY firstname, lastname
                 ORDER BY total_net DESC;
             """
-            % (by_date)
+            % (by_date, to_date)
         )
         leaderboard = cursor.fetchall()
         cursor.execute(
             """
                 SELECT count(*), min(session_start_at), max(session_start_at) FROM ledgers
-                WHERE is_ledger_published(pokernow_ledger_id) AND session_start_at > '%s'::date
+                WHERE is_ledger_published(pokernow_ledger_id) AND session_start_at > '%s'::date AND session_start_at < '%s'::date
             """
-            % (by_date)
+            % (by_date, to_date)
         )
         n_ledgers, start_date, stop_date = cursor.fetchone()
         return leaderboard, n_ledgers, start_date, stop_date
@@ -82,7 +83,7 @@ def get_recent_ledgers():
                 LATERAL get_ledger_fish(pokernow_ledger_id) fish
                 WHERE is_ledger_published(pokernow_ledger_id)
                 ORDER BY session_start_at DESC
-                LIMIT 10;
+                LIMIT 15;
             """
         )
         return cursor.fetchall()
