@@ -5,6 +5,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.keys import Keys
+from selenium.common.exceptions import ElementClickInterceptedException
 import pickle
 
 import time
@@ -67,7 +68,7 @@ def WebCrawler(profile_path, profile_name, downloads_path, chromedriver_path):
     # game_table = WebDriverWait(driver, 20).until(EC.vivisibility_of_element_located((By.XPATH, '//*[@id="myGames"]/tbody')))
 
     def get_game_table():
-        # Wait until game_table is non-empty
+        # Wait until game_table loads
         while True:
             time.sleep(0.2)
             game_table = driver.find_elements(By.XPATH, '//*[@id="myGames"]/tbody/*')
@@ -75,7 +76,7 @@ def WebCrawler(profile_path, profile_name, downloads_path, chromedriver_path):
                 return game_table
 
     def get_download_button():
-        # Wait until game_table is non-empty
+        # Wait until Download button loads
         while True:
             time.sleep(0.2)
             try:
@@ -87,6 +88,7 @@ def WebCrawler(profile_path, profile_name, downloads_path, chromedriver_path):
     for i in range(len(game_table)):
         # Have to retrieve the table each time because it refreshes on return (avoids stale element exception).
         # Command/Control clicking to open in new tab doesn't work either.
+        ActionChains(driver).move_to_element(get_game_table()[i]).perform()
         get_game_table()[i].click()
         get_download_button().click()
         time.sleep(1)
