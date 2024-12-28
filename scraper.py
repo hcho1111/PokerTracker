@@ -59,6 +59,7 @@ def WebCrawler(profile_path, profile_name, downloads_path, chromedriver_path):
     #table = WebDriverWait(driver, 20).until(EC.visibility_of_element_located((By.XPATH, '(//table)[1]'))).get_attribute("outerHTML")
     #game_table = WebDriverWait(driver, 20).until(EC.vivisibility_of_element_located((By.XPATH, '//*[@id="myGames"]/tbody')))
 
+    time.sleep(5)
     game_table = driver.find_elements(By.XPATH, '//*[@id="myGames"]/tbody/*')
 
     for i in range(1, len(game_table) + 1): 
