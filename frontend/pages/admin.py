@@ -77,7 +77,7 @@ authed_content = html.Div(
             ],
             style={"marginTop": "20px"},
         ),
-         dbc.Card(
+        dbc.Card(
             [
                 html.Div(
                     [
