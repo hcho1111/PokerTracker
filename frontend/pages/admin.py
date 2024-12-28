@@ -2,7 +2,8 @@ import dash
 from dash import dcc, html, Input, Output, callback, State, MATCH, ALL
 import dash_bootstrap_components as dbc
 import hashlib
-from api.ledger import new_ledger
+import os
+from api.ledger import new_ledger, get_unpaid_ledgers
 from api.players import (
     get_unpublished_players,
     UnpublishedPlayer,
@@ -14,6 +15,7 @@ import json
 from dash.exceptions import PreventUpdate
 
 PASSWORD_SHA512_HASH = "e09ae4f8c4448c14043ccd599af1285655960e2d200aa3e24f6b3d3626eefc3469c0faf0cd5688bee373f7251148f18a158905ed74cff7461248a8531255750e"
+IS_PROD = os.getenv("env") == "prod"
 
 dash.register_page(__name__, path="/admin")
 
@@ -32,36 +34,73 @@ wrong_password = html.B("Wrong password")
 
 authed_content = html.Div(
     [
-        html.H3("Upload new ledger (.csv)"),
-        dcc.Upload(
-            id="ledger_upload",
-            children=html.Div(["Drag and Drop or ", html.A("Select Files")]),
-            style={
-                "width": "50%",
-                "height": "60px",
-                "lineHeight": "60px",
-                "borderWidth": "1px",
-                "borderStyle": "dashed",
-                "borderRadius": "5px",
-                "textAlign": "center",
-                "margin": "10px",
-            },
-        ),
-        html.Div(
+        dbc.Card(
             [
-                html.H3("Add or Merge Players", style={"marginBottom": "0"}),
-                dbc.Button(
-                    "Refresh",
-                    color="secondary",
-                    id="unpublished_players_refresh",
-                    outline=True,
-                    size="sm",
-                    style={"marginLeft": "20px"},
+                html.H3("Upload new ledger (.csv)"),
+                dcc.Upload(
+                    id="ledger_upload",
+                    children=html.Div(["Drag and Drop or ", html.A("Select Files")]),
+                    style={
+                        "width": "50%",
+                        "height": "60px",
+                        "lineHeight": "60px",
+                        "borderWidth": "1px",
+                        "borderStyle": "dashed",
+                        "borderRadius": "5px",
+                        "textAlign": "center",
+                        "margin": "10px",
+                    },
                 ),
-            ],
-            style={"flexDirection": "row", "display": "flex", "marginBottom": "20px"},
+            ]
         ),
-        html.Div(id="unpublished_players"),
+        dbc.Card(
+            [
+                html.Div(
+                    [
+                        html.H3("Add or Merge Players", style={"marginBottom": "0"}),
+                        dbc.Button(
+                            "Refresh",
+                            color="secondary",
+                            id="unpublished_players_refresh",
+                            outline=True,
+                            size="sm",
+                            style={"marginLeft": "20px"},
+                        ),
+                    ],
+                    style={
+                        "flexDirection": "row",
+                        "display": "flex",
+                        "marginBottom": "20px",
+                    },
+                ),
+                html.Div(id="unpublished_players"),
+            ],
+            style={"marginTop": "20px"},
+        ),
+         dbc.Card(
+            [
+                html.Div(
+                    [
+                        html.H3("Create payout report", style={"marginBottom": "0"}),
+                        # dbc.Button(
+                        #     "Refresh",
+                        #     color="secondary",
+                        #     id="unpublished_players_refresh",
+                        #     outline=True,
+                        #     size="sm",
+                        #     style={"marginLeft": "20px"},
+                        # ),
+                    ],
+                    style={
+                        "flexDirection": "row",
+                        "display": "flex",
+                        "marginBottom": "20px",
+                    },
+                ),
+                # html.Div(id="unpublished_players"),
+            ],
+            style={"marginTop": "20px"},
+        ),
         dcc.Store(id="unpublished_players_store"),
         dcc.Store(id="merge_player_selection"),
     ]
@@ -85,10 +124,17 @@ layout = html.Div(
     Input(component_id="password_submit", component_property="n_clicks"),
 )
 def on_password_submit(password, submit_n_clicks):
+    authed_content = (
+        html.Div(id="authed_content"),
+        {"display": "none"},
+        {"display": "none"},
+    )
+    if not IS_PROD:
+        return authed_content
     if password is None:
         return [], {}, {}
     if hashlib.sha512(password.encode()).hexdigest() == PASSWORD_SHA512_HASH:
-        return html.Div(id="authed_content"), {"display": "none"}, {"display": "none"}
+        return authed_content
     return wrong_password, {}, {}
 
 

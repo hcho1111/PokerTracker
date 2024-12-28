@@ -89,6 +89,26 @@ def get_recent_ledgers():
         return cursor.fetchall()
 
 
+def get_unpaid_ledgers():
+    with create_connection() as connection:
+        cursor = connection.cursor()
+        cursor.execute(
+            """
+                SELECT pokernow_ledger_id, session_start_at, sums.player_id as player_id, sums.net, sums.firstname, sums.lastname
+                FROM ledgers, LATERAL(
+                    SELECT player_id, SUM(net) as net, firstname, lastname
+                    FROM ledgerrows
+                    INNER JOIN players ON players.id=ledgerrows.player_id
+                    WHERE pokernow_ledger_id='pgl9Fh66jSYhuvydmlL4b_cT9'
+                    GROUP BY player_id, firstname, lastname
+                ) as sums
+                WHERE paid_out='0' AND is_ledger_published(pokernow_ledger_id)
+                ORDER BY pokernow_ledger_id, player_id;
+            """
+        )
+        return cursor.fetchall()
+
+
 def _get_ledger_id(file_name: str):
     # Strip the 'ledger_' prefix
     ledger_id = file_name[7:]
