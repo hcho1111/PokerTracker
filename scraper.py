@@ -9,7 +9,7 @@ import time
 import random
 
 
-def WebCrawler(profile_path, profile_name, downloads_path):
+def WebCrawler(profile_path, profile_name, downloads_path, chromedriver_path):
 
     options = webdriver.ChromeOptions()
     options.add_argument(f"--user-data-dir = {profile_path}")    
@@ -61,8 +61,13 @@ def WebCrawler(profile_path, profile_name, downloads_path):
         back_button.click()
         
 
-# specify paths 
-WebCrawler(profile_path, profile_name, downloads_path)
+
+profile_path = '/Users/cho/Library/Application Support/Google/Chrome'
+profile_name = 'Profile 2'
+chromedriver_path = '/Users/cho/Desktop/PokerTracker/chromedriver-mac-x64/chromedriver'
+downloads_path = '/Users/cho/Desktop/PokerTracker/logs'
+
+WebCrawler(profile_path, profile_name, downloads_path, chromedriver_path)
 
 
 
