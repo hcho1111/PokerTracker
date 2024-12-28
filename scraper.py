@@ -3,7 +3,7 @@ from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
-
+import pickle
 
 import time 
 import random
@@ -22,37 +22,47 @@ def WebCrawler(profile_path, profile_name, downloads_path, chromedriver_path):
     #service = Service(executable_path=chromedriver_path)
     driver = webdriver.Chrome(options=options)
 
+    # This inital navigation needs to come before setting cookies or a "invalid cookie domain" occurs.
     driver.get('https://plus.pokernow.club/')
     driver.maximize_window()
+    try:
+        cookies = pickle.load(open("cookies.pkl", "rb"))
+        for cookie in cookies:
+            driver.add_cookie(cookie)
+        # Reload
+        driver.get('https://plus.pokernow.club/')
+    except Exception as e:
+        print(e)
+        print("No cookies to load")
+        login = driver.find_element(By.XPATH, '//*[@id="content"]/a')
+        login.click()
 
+        #input username 
+        inputbox = driver.find_element(By.XPATH, '//*[@id="user_login_form_email"]')
+        inputbox.send_keys('cheng.david04@gmail.com')
+        
+        #click button 
+        login_button = driver.find_element(By.XPATH, '//*[@id="new_user_login_form"]/input[3]')
+        login_button.click()
 
-    login = driver.find_element(By.XPATH, '//*[@id="content"]/a')
-    login.click()
-
-    #input username 
-    inputbox = driver.find_element(By.XPATH, '//*[@id="user_login_form_email"]')
-    inputbox.send_keys('hcho1265@gmail.com')
+        #login with code 
+        code_to_input = input('Enter Code From Email:')
+        confirmation_code_box = driver.find_element(By.XPATH, '//*[@id="user_login_code_form_code"]')
+        confirmation_code_box.send_keys(code_to_input)
+        login_button2 = driver.find_element(By.XPATH, '//*[@id="new_user_login_code_form"]/input[3]')
+        login_button2.click()
     
-    #click button 
-    login_button = driver.find_element(By.XPATH, '//*[@id="new_user_login_form"]/input[3]')
-    login_button.click()
 
-    #login with code 
-    code_to_input = input('Enter Code From Email:')
-    confirmation_code_box = driver.find_element(By.XPATH, '//*[@id="user_login_code_form_code"]')
-    confirmation_code_box.send_keys(code_to_input)
-    login_button2 = driver.find_element(By.XPATH, '//*[@id="new_user_login_code_form"]/input[3]')
-    login_button2.click()
-
-
+    pickle.dump(driver.get_cookies(), open("cookies.pkl", "wb"))
     # once logged in, scrape all json files 
 
     #table = WebDriverWait(driver, 20).until(EC.visibility_of_element_located((By.XPATH, '(//table)[1]'))).get_attribute("outerHTML")
     #game_table = WebDriverWait(driver, 20).until(EC.vivisibility_of_element_located((By.XPATH, '//*[@id="myGames"]/tbody')))
 
-    game_table = driver.find_elements(By.XPATH, '//*[@id="myGames"]/tbody')
+    game_table = driver.find_elements(By.XPATH, '//*[@id="myGames"]/tbody/*')
 
     for i in range(1, len(game_table) + 1): 
+        time.sleep(1)
         game_table[i].click()
         time.sleep(1)
         download_button = driver.find_element(By.XPATH, '//*[@id="rowJson"]/td[2]/a')
