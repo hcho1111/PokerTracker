@@ -12,61 +12,93 @@ dash.register_page(__name__, path="/")
 leaderboard_card = dbc.Card(
     [
         html.H3("Leaderboard 📈"),
-        dbc.FormText(
-            "Filter by Time", color="secondary", style={"marginBottom": "4px"}
-        ),
         html.Div(
             [
-                dbc.RadioItems(
-                    id="leaderboard_time_range",
-                    className="btn-group",
-                    inputClassName="btn-check",
-                    labelClassName="btn btn-outline-primary",
-                    labelCheckedClassName="active",
-                    options=[
-                        {"label": "All Time", "value": None},
-                        {"label": "1w", "value": 7},
-                        {"label": "1m", "value": 30},
-                        {"label": "3m", "value": 90},
-                        {"label": "1y", "value": 365},
-                        {"label": "Custom", "value": "custom"},
-                    ],
-                    value=None,
+                dbc.Button(
+                    id="leaderboard_show_filters",
+                    color="secondary",
+                    outline=True,
+                    size="sm",
+                ),
+                dbc.FormText(
+                    id="leaderboard_subtitle",
+                    color="secondary",
+                    style={"marginLeft": "6px", "marginBottom": "4px"},
                 ),
             ],
-            className="radio-group",
+            style={
+                "display": "flex",
+                "alignItems": "center",
+                "marginBottom": "0px",
+                "marginTop": "4px",
+            },
+            className="d-md-block",
         ),
-        dcc.DatePickerRange(
-            id="leaderboard_date_filter_range",
-            min_date_allowed=date(1995, 8, 5),
-            style={"marginBottom": "12px", "marginTop": "4px"},
-            max_date_allowed=date.today(),
-            initial_visible_month=date.today() - timedelta(days=7),
-            start_date=date.today() - timedelta(days=7),
-            end_date=date.today(),
-        ),
-        dbc.FormText(
-            "Filter by Games Played",
-            color="secondary",
-            style={"marginBottom": "8px", "marginTop": "8px"},
-        ),
-        html.Div(
-            [
-                dcc.Slider(
-                    id="leaderboard_games_slider",
-                    min=0,
-                    max=0,
-                    step=1,
-                    value=0,
-                    marks=None,
-                    tooltip={
-                        "placement": "bottom",
-                        "always_visible": False,
-                        "template": "≥{value}",
-                    },
-                ),
-            ],
-            style={"paddingLeft": "8px"},
+        dbc.Collapse(
+            dbc.Card(
+                [
+                    dbc.FormText(
+                        "Filter by Time",
+                        color="secondary",
+                        style={"marginBottom": "4px"},
+                    ),
+                    html.Div(
+                        [
+                            dbc.RadioItems(
+                                id="leaderboard_time_range",
+                                className="btn-group",
+                                inputClassName="btn-check",
+                                labelClassName="btn btn-outline-primary",
+                                labelCheckedClassName="active",
+                                options=[
+                                    {"label": "All Time", "value": None},
+                                    {"label": "1w", "value": 7},
+                                    {"label": "1m", "value": 30},
+                                    {"label": "3m", "value": 90},
+                                    {"label": "1y", "value": 365},
+                                    {"label": "Custom", "value": "custom"},
+                                ],
+                                value=None,
+                            ),
+                        ],
+                        className="radio-group",
+                    ),
+                    dcc.DatePickerRange(
+                        id="leaderboard_date_filter_range",
+                        min_date_allowed=date(1995, 8, 5),
+                        style={"marginBottom": "12px", "marginTop": "4px"},
+                        max_date_allowed=date.today(),
+                        initial_visible_month=date.today() - timedelta(days=7),
+                        start_date=date.today() - timedelta(days=7),
+                        end_date=date.today(),
+                    ),
+                    dbc.FormText(
+                        "Filter by Games Played",
+                        color="secondary",
+                        style={"marginBottom": "8px", "marginTop": "8px"},
+                    ),
+                    html.Div(
+                        [
+                            dcc.Slider(
+                                id="leaderboard_games_slider",
+                                min=0,
+                                max=0,
+                                step=1,
+                                value=0,
+                                marks=None,
+                                tooltip={
+                                    "placement": "bottom",
+                                    "always_visible": False,
+                                    "template": "≥{value}",
+                                },
+                            ),
+                        ],
+                        style={"paddingLeft": "8px"},
+                    ),
+                ],
+                style={"marginTop": "8px"},
+            ),
+            id="leaderboard_filters_collapse",
         ),
         dbc.Table(
             id="leaderboard_table",
@@ -74,9 +106,6 @@ leaderboard_card = dbc.Card(
             hover=True,
             responsive=True,
             style={"marginTop": "16px"},
-        ),
-        dbc.FormText(
-            id="leaderboard_subtitle", color="secondary", style={"marginBottom": "8px"}
         ),
     ],
 )
@@ -230,6 +259,26 @@ layout = dbc.Row(
 
 
 @callback(
+    Output("leaderboard_filters_collapse", "is_open"),
+    Input("leaderboard_show_filters", "n_clicks"),
+)
+def update_filters_collpase(n_clicks):
+    if n_clicks is None:
+        return False
+    return False if n_clicks % 2 == 0 else True
+
+
+@callback(
+    Output("leaderboard_show_filters", "children"),
+    Input("leaderboard_show_filters", "n_clicks"),
+)
+def update_leaderboard_show_filters_toggle(n_clicks):
+    if n_clicks is None:
+        return "Show Filters"
+    return "Show Filters" if n_clicks % 2 == 0 else "Hide Filters"
+
+
+@callback(
     Output("leaderboard_games_slider", "marks"),
     Input("leaderboard_games_slider", "max"),
 )
@@ -316,7 +365,7 @@ def update_leaderboard_table(leaderboard_store, games_filter):
 )
 def update_leaderboard_subtitle(leaderboard_store):
     _, n_ledgers, start_date, end_date = leaderboard_store
-    return "Data from %s ledgers (%s-%s)" % (
+    return "%s ledgers (%s-%s)" % (
         n_ledgers,
         datetime.fromisoformat(start_date).strftime("%m/%d/%y"),
         datetime.fromisoformat(end_date).strftime("%m/%d/%y"),
