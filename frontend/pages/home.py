@@ -30,7 +30,7 @@ leaderboard_card = dbc.Card(
                 "display": "flex",
                 "alignItems": "center",
                 "marginBottom": "0px",
-                "marginTop": "4px",
+                "marginTop": "-2px",
             },
             className="d-md-block",
         ),
