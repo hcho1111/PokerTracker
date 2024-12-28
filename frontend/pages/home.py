@@ -269,6 +269,13 @@ def update_leaderboard_store(value, start_date, end_date):
 )
 def update_leaderboard_table(leaderboard_store, games_filter):
     data, _, _, _ = leaderboard_store
+
+    filtered_data = []
+    for row in data:
+        if row[3] >= games_filter:
+            filtered_data.append(row)
+    data = filtered_data
+
     abs_max = max([abs(x[2]) for x in data])
     nets = [-abs_max] + [x[2] for x in data] + [abs_max]
     discrete_colors = sample_colorscale(
@@ -279,10 +286,6 @@ def update_leaderboard_table(leaderboard_store, games_filter):
         ],
         minmax_scale(nets),
     )
-    filtered_data = []
-    for row in data:
-        if row[3] >= games_filter:
-            filtered_data.append(row)
 
     return [
         html.Thead(html.Tr([html.Th("Player"), html.Th("Games"), html.Th("Net")]))
@@ -302,7 +305,7 @@ def update_leaderboard_table(leaderboard_store, games_filter):
                         ),
                     ]
                 )
-                for i, x in enumerate(filtered_data)
+                for i, x in enumerate(data)
             ]
         )
     ]

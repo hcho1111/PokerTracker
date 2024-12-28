@@ -86,7 +86,7 @@ layout = html.Div(
 )
 def on_password_submit(password, submit_n_clicks):
     if password is None:
-        return html.Div(id="authed_content"), {"display": "none"}, {"display": "none"}
+        return [], {}, {}
     if hashlib.sha512(password.encode()).hexdigest() == PASSWORD_SHA512_HASH:
         return html.Div(id="authed_content"), {"display": "none"}, {"display": "none"}
     return wrong_password, {}, {}
