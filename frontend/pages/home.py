@@ -127,24 +127,25 @@ def get_top_username_counts():
     ]
 
 
-top_username_count_card = dbc.Card(
-    [
-        html.H3("User IDs Count - Top Offenders 😠"),
-        dbc.FormText(
-            "(Please make a pokernow account to make paying out easier, especially you Ming!)",
-            color="secondary",
-            style={"marginTop": "-8px"},
-        ),
-        dbc.Table(
-            id="top_username_count_card",
-            children=get_top_username_counts(),
-            bordered=True,
-            hover=True,
-            responsive=True,
-            style={"marginTop": "16px"},
-        ),
-    ]
-)
+def get_top_username_count_card():
+    return dbc.Card(
+        [
+            html.H3("User IDs Count - Top Offenders 😠"),
+            dbc.FormText(
+                "(Please make a pokernow account to make paying out easier, especially you Ming!)",
+                color="secondary",
+                style={"marginTop": "-8px"},
+            ),
+            dbc.Table(
+                id="top_username_count_card",
+                children=get_top_username_counts(),
+                bordered=True,
+                hover=True,
+                responsive=True,
+                style={"marginTop": "16px"},
+            ),
+        ]
+    )
 
 
 def get_recent_ledgers_children():
@@ -226,36 +227,40 @@ def get_recent_ledgers_children():
     ]
 
 
-recent_ledgers_card = dbc.Card(
-    [
-        html.H3("Ledgers 📒"),
-        dbc.Table(
-            id="recent_ledgers",
-            children=get_recent_ledgers_children(),
-            bordered=True,
-            hover=True,
-            responsive=True,
-            style={"marginTop": "8px"},
-        ),
-    ]
-)
+def get_recent_ledgers_card():
+    return dbc.Card(
+        [
+            html.H3("Ledgers 📒"),
+            dbc.Table(
+                id="recent_ledgers",
+                children=get_recent_ledgers_children(),
+                bordered=True,
+                hover=True,
+                responsive=True,
+                style={"marginTop": "8px"},
+            ),
+        ]
+    )
 
-layout = dbc.Row(
-    [
-        dbc.Col([dbc.Row(children=[leaderboard_card])], md=6),
-        dbc.Col(
-            [
-                dbc.Row(children=[recent_ledgers_card]),
-                dbc.Row(
-                    children=[top_username_count_card], style={"marginTop": "24px"}
-                ),
-            ],
-            md=6,
-        ),
-        dcc.Store(id="leaderboard_store"),
-    ],
-    className="g-5",
-)
+
+def layout():
+    return dbc.Row(
+        [
+            dbc.Col([dbc.Row(children=[leaderboard_card])], md=6),
+            dbc.Col(
+                [
+                    dbc.Row(children=[get_recent_ledgers_card()]),
+                    dbc.Row(
+                        children=[get_top_username_count_card()],
+                        style={"marginTop": "24px"},
+                    ),
+                ],
+                md=6,
+            ),
+            dcc.Store(id="leaderboard_store"),
+        ],
+        className="g-5",
+    )
 
 
 @callback(

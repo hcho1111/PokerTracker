@@ -18,14 +18,18 @@ app = Dash(
 )
 server = app.server
 
-app.layout = html.Div(
-    [
-        html.H1("casino pokernow", style={"marginBottom": "30px"}),
-        dash.page_container,
-    ],
-    style={"padding": "30px"},
-)
 
+def serve_layout():
+    return html.Div(
+        [
+            html.H1("casino pokernow", style={"marginBottom": "30px"}),
+            dash.page_container,
+        ],
+        style={"padding": "30px"},
+    )
+
+
+app.layout = serve_layout
 
 if __name__ == "__main__":
     app.run(debug=not IS_PROD)
