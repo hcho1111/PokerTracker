@@ -89,24 +89,80 @@ def get_recent_ledgers():
         return cursor.fetchall()
 
 
-def get_unpaid_ledgers():
+def get_unpaid_ledgers_count():
     with create_connection() as connection:
         cursor = connection.cursor()
         cursor.execute(
-            """
-                SELECT pokernow_ledger_id, session_start_at, sums.player_id as player_id, sums.net, sums.firstname, sums.lastname
-                FROM ledgers, LATERAL(
-                    SELECT player_id, SUM(net) as net, firstname, lastname
-                    FROM ledgerrows
-                    INNER JOIN players ON players.id=ledgerrows.player_id
-                    WHERE pokernow_ledger_id='pgl9Fh66jSYhuvydmlL4b_cT9'
-                    GROUP BY player_id, firstname, lastname
-                ) as sums
-                WHERE paid_out='0' AND is_ledger_published(pokernow_ledger_id)
-                ORDER BY pokernow_ledger_id, player_id;
-            """
+            "SELECT count(*), min(session_start_at), max(session_start_at) FROM ledgers WHERE paid_out='0' AND is_ledger_published(pokernow_ledger_id)"
         )
-        return cursor.fetchall()
+        return cursor.fetchone()
+
+
+def get_unpaid_ledgers_ids():
+    with create_connection() as connection:
+        cursor = connection.cursor()
+        cursor.execute(
+            "SELECT string_agg(pokernow_ledger_id, ',') FROM ledgers WHERE paid_out='0' AND is_ledger_published(pokernow_ledger_id)"
+        )
+        return cursor.fetchone()
+
+
+def mark_unpaid_ledgers_as_paid():
+    with create_connection() as connection:
+        cursor = connection.cursor()
+        cursor.execute(
+            "UPDATE ledgers SET paid_out='1' WHERE paid_out='0' AND is_ledger_published(pokernow_ledger_id)"
+        )
+
+
+def get_payout_report(ledger_ids: List[str]):
+    with create_connection() as connection:
+        cursor = connection.cursor()
+        ledger_ids_string = ",".join(["'%s'" % x for x in ledger_ids])
+        cursor.execute(
+            """
+                SELECT pokernow_ledger_id, session_start_at, player_id, net, firstname, lastname
+                FROM ledgers,
+                LATERAL get_ledger_net(pokernow_ledger_id) ledger_net
+                WHERE pokernow_ledger_id IN (%s)
+                GROUP BY pokernow_ledger_id, player_id, net, firstname, lastname
+                ORDER BY pokernow_ledger_id;
+            """
+            % (ledger_ids_string)
+        )
+        data = cursor.fetchall()
+
+        cursor.execute(
+            """
+                SELECT player_id, firstname, lastname, sum(net), venmo
+                FROM ledgerrows
+                INNER JOIN players ON players.id = player_id
+                WHERE pokernow_ledger_id IN (%s)
+                GROUP BY player_id, firstname, lastname, venmo
+                ORDER BY sum DESC;
+            """
+            % (ledger_ids_string)
+        )
+        leaderboard_rows = cursor.fetchall()
+
+        # Create sorted list of (ledger_id, start_dates)
+        ledger_columns = []
+
+        # Create mapping of ledger_ids to player_id to net
+        ledger_table = {}
+
+        for row in data:
+            ledger_id, date, player_id, net, firstname, lastname = row
+            if ledger_id not in ledger_table:
+                ledger_table[ledger_id] = {}
+            if player_id not in ledger_table[ledger_id]:
+                ledger_table[ledger_id][player_id] = {}
+            ledger_table[ledger_id][player_id] = net
+
+            if not ledger_columns or ledger_columns[-1][0] != ledger_id:
+                ledger_columns.append((ledger_id, date))
+
+        return leaderboard_rows, ledger_columns, ledger_table
 
 
 def _get_ledger_id(file_name: str):

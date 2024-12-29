@@ -1,9 +1,15 @@
 import dash
-from dash import dcc, html, Input, Output, callback, State, MATCH, ALL
+from dash import dcc, html, Input, Output, callback, State, MATCH, ALL, ctx
 import dash_bootstrap_components as dbc
 import hashlib
 import os
-from api.ledger import new_ledger, get_unpaid_ledgers
+from api.ledger import (
+    new_ledger,
+    get_payout_report,
+    get_unpaid_ledgers_count,
+    get_unpaid_ledgers_ids,
+    mark_unpaid_ledgers_as_paid,
+)
 from api.players import (
     get_unpublished_players,
     UnpublishedPlayer,
@@ -32,88 +38,144 @@ password_input = dbc.Row(
 
 wrong_password = html.B("Wrong password")
 
-authed_content = html.Div(
-    [
-        dbc.Card(
-            [
-                html.H3("Upload new ledger (.csv)"),
-                dcc.Upload(
-                    id="ledger_upload",
-                    children=html.Div(["Drag and Drop or ", html.A("Select Files")]),
-                    style={
-                        "width": "50%",
-                        "height": "60px",
-                        "lineHeight": "60px",
-                        "borderWidth": "1px",
-                        "borderStyle": "dashed",
-                        "borderRadius": "5px",
-                        "textAlign": "center",
-                        "margin": "10px",
-                    },
-                ),
-            ]
-        ),
-        dbc.Card(
-            [
-                html.Div(
-                    [
-                        html.H3("Add or Merge Players", style={"marginBottom": "0"}),
-                        dbc.Button(
-                            "Refresh",
-                            color="secondary",
-                            id="unpublished_players_refresh",
-                            outline=True,
-                            size="sm",
-                            style={"marginLeft": "20px"},
-                        ),
-                    ],
-                    style={
-                        "flexDirection": "row",
-                        "display": "flex",
-                        "marginBottom": "20px",
-                    },
-                ),
-                html.Div(id="unpublished_players"),
-            ],
-            style={"marginTop": "20px"},
-        ),
-        dbc.Card(
-            [
-                html.Div(
-                    [
-                        html.H3("Create payout report", style={"marginBottom": "0"}),
-                        # dbc.Button(
-                        #     "Refresh",
-                        #     color="secondary",
-                        #     id="unpublished_players_refresh",
-                        #     outline=True,
-                        #     size="sm",
-                        #     style={"marginLeft": "20px"},
-                        # ),
-                    ],
-                    style={
-                        "flexDirection": "row",
-                        "display": "flex",
-                        "marginBottom": "20px",
-                    },
-                ),
-                # html.Div(id="unpublished_players"),
-            ],
-            style={"marginTop": "20px"},
-        ),
-        dcc.Store(id="unpublished_players_store"),
-        dcc.Store(id="merge_player_selection"),
-    ]
-)
 
-layout = html.Div(
-    [
-        html.H2("Admin page"),
-        password_input,
-        html.Div(id="root"),
-        dcc.ConfirmDialog(id="error_dialog"),
-    ]
+def get_payout_status():
+    count, start_date, end_date = get_unpaid_ledgers_count()
+    return "%s unpaid ledger(s), (%s - %s)" % (
+        count,
+        start_date.strftime("%m/%d/%y"),
+        end_date.strftime("%m/%d/%y"),
+    )
+
+
+def get_authed_content():
+    return html.Div(
+        [
+            dbc.Card(
+                [
+                    html.H3("Upload new ledger (.csv)"),
+                    dcc.Upload(
+                        id="ledger_upload",
+                        children=html.Div(
+                            ["Drag and Drop or ", html.A("Select Files")]
+                        ),
+                        style={
+                            "width": "50%",
+                            "height": "60px",
+                            "lineHeight": "60px",
+                            "borderWidth": "1px",
+                            "borderStyle": "dashed",
+                            "borderRadius": "5px",
+                            "textAlign": "center",
+                            "margin": "10px",
+                        },
+                    ),
+                ]
+            ),
+            dbc.Card(
+                [
+                    html.Div(
+                        [
+                            html.H3(
+                                "Add or Merge Players", style={"marginBottom": "0"}
+                            ),
+                            dbc.Button(
+                                "Refresh",
+                                color="secondary",
+                                id="unpublished_players_refresh",
+                                outline=True,
+                                size="sm",
+                                style={"marginLeft": "12px"},
+                            ),
+                        ],
+                        style={
+                            "flexDirection": "row",
+                            "display": "flex",
+                            "marginBottom": "20px",
+                        },
+                    ),
+                    html.Div(id="unpublished_players"),
+                ],
+                style={"marginTop": "12px"},
+            ),
+            dbc.Card(
+                [
+                    html.Div(
+                        [
+                            html.H3("Payout report", style={"marginBottom": "0"}),
+                            dcc.Link(
+                                "Create new",
+                                target="_blank",
+                                href=get_payout_report_href(),
+                                style={"marginTop": "8px", "marginLeft": "8px"},
+                            ),
+                        ],
+                        style={
+                            "flexDirection": "row",
+                            "display": "flex",
+                            "marginBottom": "12px",
+                        },
+                    ),
+                    html.B(get_payout_status()),
+                    dbc.Button(
+                        "Mark all as paid",
+                        color="secondary",
+                        id="payout_button",
+                        outline=True,
+                        style={"width": "200px", "marginTop": "8px"},
+                    ),
+                ],
+                style={"marginTop": "20px"},
+            ),
+            dbc.Modal(
+                [
+                    dbc.ModalHeader(dbc.ModalTitle("Please confirm")),
+                    dbc.ModalBody("Are you sho about that"),
+                    dbc.ModalFooter(
+                        dbc.Button(
+                            "Yes",
+                            id="payout_button_confirm",
+                        )
+                    ),
+                ],
+                id="payout_confirm_modal",
+                size="sm",
+                is_open=False,
+                centered=True,
+            ),
+            dcc.Store(id="unpublished_players_store"),
+            dcc.Store(id="merge_player_selection"),
+        ]
+    )
+
+
+def layout():
+    return html.Div(
+        [
+            html.H2("Admin page"),
+            password_input,
+            html.Div(id="root"),
+            dcc.ConfirmDialog(id="error_dialog"),
+        ]
+    )
+
+
+@callback(
+    Output("payout_confirm_modal", "is_open"),
+    Input("payout_button", "n_clicks"),
+    Input("payout_button_confirm", "n_clicks"),
 )
+def update_payout_confirm_modal(a, b):
+    button_clicked = ctx.triggered_id
+    if button_clicked == "payout_button":
+        return True
+    if button_clicked == "payout_button_confirm":
+        mark_unpaid_ledgers_as_paid()
+    return False
+
+
+def get_payout_report_href():
+    return "/payouts?ids=%s" % get_unpaid_ledgers_ids()
 
 
 @callback(
@@ -143,7 +205,7 @@ def on_password_submit(password, submit_n_clicks):
     Input(component_id="root", component_property="children"),
 )
 def update_authed_content(a):
-    return authed_content
+    return get_authed_content()
 
 
 @callback(

@@ -22,7 +22,7 @@ server = app.server
 def serve_layout():
     return html.Div(
         [
-            html.H1("casino pokernow", style={"marginBottom": "30px"}),
+            html.H1("pokernow tracker", style={"marginBottom": "30px"}),
             dash.page_container,
         ],
         style={"padding": "30px"},
