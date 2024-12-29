@@ -77,7 +77,8 @@ def get_recent_ledgers():
             """
                 SELECT pokernow_ledger_id, session_start_at,
                     winner.first_names as winner_first_names, winner.last_names as winner_last_names, winner.net as winner_net,
-                    fish.first_names as fish_first_names, fish.last_names as fish_last_names, fish.net as fish_net
+                    fish.first_names as fish_first_names, fish.last_names as fish_last_names, fish.net as fish_net,
+                    paid_out
                 FROM ledgers,
                 LATERAL get_ledger_winner(pokernow_ledger_id) winner, 
                 LATERAL get_ledger_fish(pokernow_ledger_id) fish

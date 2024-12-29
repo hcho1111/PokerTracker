@@ -166,6 +166,7 @@ def get_recent_ledgers_children():
             html.Tr(
                 [
                     html.Th("Date"),
+                    html.Th("Paid"),
                     html.Th("🦈 Shark"),
                     html.Th("Net"),
                     html.Th("🐟 Fish"),
@@ -185,6 +186,7 @@ def get_recent_ledgers_children():
                                 href="https://www.pokernow.club/games/%s" % x[0],
                             )
                         ),
+                        html.Td("Y" if x[8] else "N"),
                         html.Td(
                             ", ".join(
                                 [
