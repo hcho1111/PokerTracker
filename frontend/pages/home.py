@@ -6,6 +6,7 @@ from plotly.express.colors import sample_colorscale
 from sklearn.preprocessing import minmax_scale
 from datetime import datetime, timedelta, date
 from api.players import get_top_offenders
+from zoneinfo import ZoneInfo
 
 dash.register_page(__name__, path="/")
 
@@ -181,7 +182,7 @@ def get_recent_ledgers_children():
                     [
                         html.Td(
                             dcc.Link(
-                                x[1].strftime("%m/%d"),
+                                x[1].astimezone(ZoneInfo('America/New_York')).strftime("%m/%d"),
                                 target="_blank",
                                 href="https://www.pokernow.club/games/%s" % x[0],
                             )
