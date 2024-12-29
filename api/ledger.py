@@ -127,7 +127,7 @@ def get_payout_report(ledger_ids: List[str]):
                 LATERAL get_ledger_net(pokernow_ledger_id) ledger_net
                 WHERE pokernow_ledger_id IN (%s)
                 GROUP BY pokernow_ledger_id, player_id, net, firstname, lastname
-                ORDER BY pokernow_ledger_id;
+                ORDER BY session_start_at;
             """
             % (ledger_ids_string)
         )
