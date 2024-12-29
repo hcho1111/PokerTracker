@@ -245,7 +245,8 @@ def get_recent_ledgers_card():
     )
 
 
-def layout():
+# fbclid param ignored. Added from FB messenger.
+def layout(fbclid=""):
     return dbc.Row(
         [
             dbc.Col([dbc.Row(children=[leaderboard_card])], md=6),

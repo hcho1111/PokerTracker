@@ -9,8 +9,8 @@ from api.players import get_top_offenders
 
 dash.register_page(__name__, path="/payouts")
 
-
-def layout(ids):
+# fbclid param ignored. Added from FB messenger.
+def layout(ids, fbclid=""):
     leaderboard_rows, ledger_columns, ledger_table = get_payout_report(ids.split(","))
 
     nets = [x[3] for x in leaderboard_rows]
