@@ -41,6 +41,8 @@ wrong_password = html.B("Wrong password")
 
 def get_payout_status():
     count, start_date, end_date = get_unpaid_ledgers_count()
+    if count == 0:
+        return "All paid"
     return "%s unpaid ledger(s), (%s - %s)" % (
         count,
         start_date.strftime("%m/%d/%y"),

@@ -182,7 +182,9 @@ def get_recent_ledgers_children():
                     [
                         html.Td(
                             dcc.Link(
-                                x[1].astimezone(ZoneInfo('America/New_York')).strftime("%m/%d"),
+                                x[1]
+                                .astimezone(ZoneInfo("America/New_York"))
+                                .strftime("%m/%d"),
                                 target="_blank",
                                 href="https://www.pokernow.club/games/%s" % x[0],
                             )

@@ -10,6 +10,7 @@ from zoneinfo import ZoneInfo
 
 dash.register_page(__name__, path="/payouts")
 
+
 # fbclid param ignored. Added from FB messenger.
 def layout(ids, fbclid=""):
     leaderboard_rows, ledger_columns, ledger_table = get_payout_report(ids.split(","))
@@ -54,7 +55,9 @@ def layout(ids, fbclid=""):
                             + [
                                 html.Th(
                                     dcc.Link(
-                                        x[1].astimezone(ZoneInfo('America/New_York')).strftime("%m/%d"),
+                                        x[1]
+                                        .astimezone(ZoneInfo("America/New_York"))
+                                        .strftime("%m/%d"),
                                         href="https://www.pokernow.club/games/%s"
                                         % x[0],
                                         target="_blank",
