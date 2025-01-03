@@ -7,13 +7,77 @@ from sklearn.preprocessing import minmax_scale
 from datetime import datetime, timedelta, date
 from api.players import get_top_offenders
 from zoneinfo import ZoneInfo
+import dash_daq as daq
+from flask import request
 
 dash.register_page(__name__, path="/payouts")
 
 
+def user_on_mobile() -> bool:
+    user_agent = request.headers.get("User-Agent")
+    user_agent = user_agent.lower()
+    phones = ["android", "iphone"]
+
+    if any(x in user_agent for x in phones):
+        return True
+    return False
+
+
+def create_venmo_deeplink(venmo, amount, comment):
+    txn = "pay" if amount > 0 else "charge"
+    if user_on_mobile():
+        return (
+            "venmo://paycharge?txn=pay&recipients=%s&note=%s&amount=%s&txn=%s&audience=private"
+            % (venmo, comment, abs(amount), txn)
+        )
+
+    return (
+        "https://account.venmo.com/pay?recipients=%s&note=%s&amount=%s&txn=%s&audience=private"
+        % (venmo, comment, abs(amount), txn)
+    )
+
+
 # fbclid param ignored. Added from FB messenger.
 def layout(ids, fbclid=""):
-    leaderboard_rows, ledger_columns, ledger_table = get_payout_report(ids.split(","))
+    return html.Div(
+        [
+            html.Div(
+                [
+                    html.H3("Payout Ledger"),
+                    daq.PowerButton(
+                        id="admin_mode_power_button",
+                        on=False,
+                        size=20,
+                        color="#FF5E5E",
+                        style={"marginLeft": "12px", "marginTop": "4px"},
+                    ),
+                    dbc.FormText(
+                        "Admin mode",
+                        color="secondary",
+                        style={"marginLeft": "6px", "marginBottom": "4px"},
+                    ),
+                ],
+                style={"display": "flex", "flexDirection": "row"},
+            ),
+            dbc.Table(
+                id="payout_table",
+                bordered=True,
+                hover=True,
+                responsive=True,
+                style={"marginTop": "4px"},
+            ),
+            dcc.Store(id="payout_report_store", data=get_payout_report(ids.split(","))),
+        ]
+    )
+
+
+@callback(
+    Output("payout_table", "children"),
+    Input("admin_mode_power_button", "on"),
+    State("payout_report_store", "data"),
+)
+def update_table(admin_mode, data):
+    leaderboard_rows, ledger_columns, ledger_table = data
 
     nets = [x[3] for x in leaderboard_rows]
     abs_max = max([abs(x[3]) for x in leaderboard_rows])
@@ -25,13 +89,12 @@ def layout(ids, fbclid=""):
         ],
         minmax_scale(nets + [-abs_max] + [abs_max]),
     )
-    print()
 
     def generate_table_row(player_id):
         result = []
         for column in ledger_columns:
             ledger_id, _ = column
-            value = ledger_table.get(ledger_id, {}).get(player_id, None)
+            value = ledger_table.get(ledger_id, {}).get(str(player_id), None)
             if value is None:
                 result.append(html.Td())
             else:
@@ -40,85 +103,76 @@ def layout(ids, fbclid=""):
                 )
         return result
 
-    return html.Div(
-        [
-            html.H3("Payout Ledger"),
-            dbc.Table(
-                bordered=True,
-                hover=True,
-                responsive=True,
-                style={"marginTop": "4px"},
-                children=[
-                    html.Thead(
-                        html.Tr(
-                            [html.Th("Player"), html.Th("Venmo"), html.Th("Total Net")]
-                            + [
-                                html.Th(
+    def format_date(date_string):
+        return (
+            datetime.fromisoformat(date_string)
+            .astimezone(ZoneInfo("America/New_York"))
+            .strftime("%m/%d")
+        )
+
+    return [
+        html.Thead(
+            html.Tr(
+                [html.Th("Player")]
+                + ([html.Th("Venmo")] if admin_mode else [])
+                + [html.Th("Total Net")]
+                + [
+                    html.Th(
+                        dcc.Link(
+                            format_date(x[1]),
+                            href="https://www.pokernow.club/games/%s" % x[0],
+                            target="_blank",
+                        )
+                    )
+                    for x in ledger_columns
+                ]
+            )
+        ),
+        html.Tbody(
+            [
+                html.Tr(
+                    [
+                        html.Td("%s %s" % (x[1], x[2])),
+                    ]
+                    + (
+                        [
+                            html.Td(
+                                (
                                     dcc.Link(
-                                        x[1]
-                                        .astimezone(ZoneInfo("America/New_York"))
-                                        .strftime("%m/%d"),
-                                        href="https://www.pokernow.club/games/%s"
-                                        % x[0],
+                                        "Venmo",
+                                        href=create_venmo_deeplink(
+                                            venmo=x[4],
+                                            amount=x[3] / 100.0,
+                                            comment="♠️♥️♣️♦️ for %s-%s"
+                                            % (
+                                                format_date(ledger_columns[0][1]),
+                                                format_date(ledger_columns[-1][1]),
+                                            ),
+                                        ),
                                         target="_blank",
                                     )
-                                )
-                                for x in ledger_columns
-                            ]
-                        )
-                    ),
-                    html.Tbody(
-                        [
-                            html.Tr(
-                                [
-                                    html.Td("%s %s" % (x[1], x[2])),
-                                    html.Td(
-                                        (
-                                            dcc.Clipboard(
-                                                content=x[4],
-                                                title="copy",
-                                                style={
-                                                    "fontSize": 16,
-                                                },
-                                            )
-                                            if x[4] != "None"
-                                            else None
-                                        ),
-                                        style={"textAlign": "end"},
-                                    ),
-                                    html.Td(
-                                        html.Div(
-                                            [
-                                                dcc.Clipboard(
-                                                    target_id="net_%s" % i,
-                                                    style={
-                                                        "fontSize": 16,
-                                                        "display": "inline",
-                                                    },
-                                                ),
-                                                html.B(
-                                                    "{:.2f}".format(x[3] / 100),
-                                                    id="net_%s" % i,
-                                                ),
-                                            ],
-                                            style={
-                                                "display": "flex",
-                                                "flexDirection": "row",
-                                                "justifyContent": "space-between",
-                                            },
-                                        ),
-                                        style={
-                                            "fontWeight": "bold",
-                                            "backgroundColor": discrete_colors[i],
-                                        },
-                                    ),
-                                ]
-                                + generate_table_row(x[0])
-                            )
-                            for i, x in enumerate(leaderboard_rows)
+                                    if x[4] != "None"
+                                    else None
+                                ),
+                                style={"textAlign": "end"},
+                            ),
                         ]
-                    ),
-                ],
-            ),
-        ]
-    )
+                        if admin_mode
+                        else []
+                    )
+                    + [
+                        html.Td(
+                            html.B("{:.2f}".format(x[3] / 100)),
+                            style={
+                                "fontWeight": "bold",
+                                "textAlign": "end",
+                                "backgroundColor": discrete_colors[i],
+                            },
+                        ),
+                    ]
+                    + generate_table_row(x[0])
+                )
+                for i, x in enumerate(leaderboard_rows)
+            ]
+        ),
+    ]

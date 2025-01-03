@@ -35,3 +35,5 @@
 .rc-slider-track {
   background-color: lightgray;
 }
+
+a:visited { text-decoration: none; color:purple; }
