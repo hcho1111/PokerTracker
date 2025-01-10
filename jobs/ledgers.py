@@ -47,6 +47,9 @@ def download_ledger(url: str, downloads_path: str):
     options.add_argument('--ignore-certificate-errors')
     options.add_argument('--disable-dev-shm-usage')
     options.add_argument('--disable-gpu')
+    options.add_argument("--window-size=1920,1080");
+    options.add_argument("--no-sandbox");
+    options.page_load_strategy = 'normal'
     driver = webdriver.Chrome(
         service=Service(ChromeDriverManager().install()), options=options
     )
