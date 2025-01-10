@@ -1,5 +1,6 @@
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
@@ -10,9 +11,23 @@ import pickle
 
 import time
 import random
+import os
 
 
-def DownloadLedger(url: str, downloads_path: str, chromedriver_path: str):
+def download_wait(path_to_downloads):
+    seconds = 0
+    dl_wait = True
+    while dl_wait and seconds < 20:
+        time.sleep(0.5)
+        dl_wait = False
+        for fname in os.listdir(path_to_downloads):
+            if fname.endswith(".crdownload"):
+                dl_wait = True
+        seconds += 1
+    return seconds
+
+
+def download_ledger(url: str, downloads_path: str):
     """
     Automatically download CSV with logs, names by providing a csv URL
 
@@ -27,7 +42,8 @@ def DownloadLedger(url: str, downloads_path: str, chromedriver_path: str):
     options = webdriver.ChromeOptions()
     prefs = {"download.default_directory": downloads_path}
     options.add_experimental_option("prefs", prefs)
-    driver = webdriver.Chrome(executable_path=chromedriver_path, options=options)
+    options.add_argument("--headless=new")  # for Chrome >= 109
+    driver = webdriver.Chrome(options=options)
     driver.get(url)
     driver.maximize_window()
 
@@ -49,6 +65,11 @@ def DownloadLedger(url: str, downloads_path: str, chromedriver_path: str):
     ledger_button.click()
 
     # download the ledger csv
-    download_ledger = ledger_button.find_element(By.XPATH, download_ledger_XPATH)
-    time.sleep(random.randint(3, 8))
+    ledger_button.find_element(By.XPATH, download_ledger_XPATH).click()
+    download_wait(downloads_path)
     driver.close()
+
+    return os.path.join(downloads_path, "ledger_%s.csv" % url.split("/")[-1])
+
+
+# DownloadLedger("https://www.pokernow.club/games/pgl82kjXBhtkS7KTjULQ92gMX", "/tmp", "")

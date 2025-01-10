@@ -4,6 +4,7 @@ import dash_bootstrap_components as dbc
 import hashlib
 import os
 from api.ledger import (
+    new_ledger,
     new_ledger_from_bytes,
     get_payout_report,
     get_unpaid_ledgers_count,
@@ -17,6 +18,7 @@ from api.players import (
     get_published_players,
     merge_player,
 )
+from jobs import ledgers
 import json
 from dash.exceptions import PreventUpdate
 
@@ -71,6 +73,22 @@ def get_authed_content():
                             "textAlign": "center",
                             "margin": "10px",
                         },
+                    ),
+                    dbc.Label("Pokernow Link"),
+                    dbc.Row(
+                        [
+                            dbc.Col(
+                                dbc.Input(
+                                    type="url", id="url_field", placeholder="Enter URL"
+                                ),
+                            ),
+                            dbc.Col(
+                                dbc.Button(
+                                    "Submit", color="primary", id="url_field_submit"
+                                )
+                            ),
+                        ],
+                        style={"width": "50%"},
                     ),
                 ]
             ),
@@ -214,15 +232,23 @@ def update_authed_content(a):
     Output(component_id="error_dialog", component_property="displayed"),
     Output(component_id="error_dialog", component_property="message"),
     Input(component_id="ledger_upload", component_property="contents"),
+    Input(component_id="url_field_submit", component_property="n_clicks"),
     State(component_id="ledger_upload", component_property="filename"),
+    State(component_id="url_field", component_property="value"),
 )
-def on_ledger_upload(contents, filename):
-    if contents is not None:
-        try:
+def on_ledger_upload(contents, n_clicks, filename, url):
+    try:
+        if contents is not None:
             new_ledger_from_bytes(filename, contents)
             return True, "Success"
-        except Exception as error:
-            return True, str(error)
+        if url:
+            file_path = ledgers.download_ledger(url, "/tmp")
+            with open(file_path) as f:
+                new_ledger(os.path.basename(file_path), f.read())
+            return True, "Success"
+    except Exception as error:
+        return True, str(error)
+
     return False, ""
 
 
