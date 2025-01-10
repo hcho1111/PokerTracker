@@ -44,9 +44,13 @@ def download_ledger(url: str, downloads_path: str):
     prefs = {"download.default_directory": downloads_path}
     options.add_experimental_option("prefs", prefs)
     options.add_argument("--headless=new")  # for Chrome >= 109
+    options.add_argument('--ignore-certificate-errors')
+    options.add_argument('--disable-dev-shm-usage')
+    options.add_argument('--disable-gpu')
     driver = webdriver.Chrome(
         service=Service(ChromeDriverManager().install()), options=options
     )
+    driver.set_page_load_timeout(10)
     driver.get(url)
     driver.maximize_window()
 

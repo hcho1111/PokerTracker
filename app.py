@@ -67,4 +67,4 @@ def upload_ledger():
 
 
 if __name__ == "__main__":
-    app.run(debug=not IS_PROD)
+    server.run(debug=not IS_PROD)
