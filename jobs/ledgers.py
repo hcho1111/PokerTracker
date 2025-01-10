@@ -69,7 +69,8 @@ def download_ledger(url: str, downloads_path: str):
 
     # download the ledger csv
     ledger_button.find_element(By.XPATH, download_ledger_XPATH).click()
-    download_wait(downloads_path)
+    # download_wait(downloads_path)
+    time.sleep(2)
     driver.close()
 
     return os.path.join(downloads_path, "ledger_%s.csv" % url.split("/")[-1])
