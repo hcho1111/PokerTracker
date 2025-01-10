@@ -9,14 +9,17 @@ from numpy import nan
 from datetime import date, timedelta
 
 
+def new_ledger_from_bytes(filename: str, csv_raw: str):
+    content_type, content_string = csv_raw.split(",")
+    csv_decoded = base64.b64decode(content_string).decode("utf-8")
+    return new_ledger(filename, csv_decoded)
+
+
 # Create a new ledger from a CSV file.
 # Returns: the new ledger's ID, and a list of players with their verified match, or a suggested match based on user name
-def new_ledger(filename: str, csv_raw: str):
-    content_type, content_string = csv_raw.split(",")
-    decoded = base64.b64decode(content_string)
-
+def new_ledger(filename: str, csv: str):
     ledger_id = _get_ledger_id(filename)
-    df = pd.read_csv(io.StringIO(decoded.decode("utf-8")))
+    df = pd.read_csv(io.StringIO(csv))
     session_start = str(pd.to_datetime(df["session_start_at"]).min())
 
     with create_connection() as connection:

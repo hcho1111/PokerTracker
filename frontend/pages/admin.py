@@ -4,7 +4,7 @@ import dash_bootstrap_components as dbc
 import hashlib
 import os
 from api.ledger import (
-    new_ledger,
+    new_ledger_from_bytes,
     get_payout_report,
     get_unpaid_ledgers_count,
     get_unpaid_ledgers_ids,
@@ -219,7 +219,7 @@ def update_authed_content(a):
 def on_ledger_upload(contents, filename):
     if contents is not None:
         try:
-            new_ledger(filename, contents)
+            new_ledger_from_bytes(filename, contents)
             return True, "Success"
         except Exception as error:
             return True, str(error)
