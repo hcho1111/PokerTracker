@@ -8,6 +8,7 @@ from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.keys import Keys
 from selenium.common.exceptions import ElementClickInterceptedException
 import pickle
+from webdriver_manager.chrome import ChromeDriverManager
 
 import time
 import random
@@ -43,7 +44,9 @@ def download_ledger(url: str, downloads_path: str):
     prefs = {"download.default_directory": downloads_path}
     options.add_experimental_option("prefs", prefs)
     options.add_argument("--headless=new")  # for Chrome >= 109
-    driver = webdriver.Chrome(options=options)
+    driver = webdriver.Chrome(
+        service=Service(ChromeDriverManager().install()), options=options
+    )
     driver.get(url)
     driver.maximize_window()
 
