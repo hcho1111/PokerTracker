@@ -50,9 +50,7 @@ def download_ledger(url: str, downloads_path: str):
     options.add_argument("--window-size=1920,1080");
     options.add_argument("--no-sandbox");
     options.page_load_strategy = 'normal'
-    driver = webdriver.Chrome(
-        service=Service(ChromeDriverManager().install()), options=options
-    )
+    driver = webdriver.Chrome(options=options)
     driver.set_page_load_timeout(10)
     driver.get(url)
     driver.maximize_window()
