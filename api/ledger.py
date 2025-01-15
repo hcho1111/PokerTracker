@@ -46,7 +46,7 @@ def new_ledger(filename: str, csv: str):
     return ledger_id
 
 
-def get_leaderboard(by_date="2020-01-01", to_date=date.today() + timedelta(days=1)):
+def get_leaderboard(by_date="2020-01-01", to_date=date.today() + timedelta(days=100)):
     with create_connection() as connection:
         cursor = connection.cursor()
         cursor.execute(
