@@ -7,6 +7,7 @@ from flask import Flask, flash, request, redirect, url_for
 from werkzeug.utils import secure_filename
 from api.ledger import new_ledger
 from psycopg2.errors import UniqueViolation
+import plotly.io as pio
 
 UPLOAD_FOLDER = "/tmp"
 ALLOWED_EXTENSIONS = {"csv"}
@@ -25,6 +26,7 @@ app = Dash(
 )
 api = Api(server)
 
+pio.templates.default = "plotly_white"
 
 def serve_layout():
     return html.Div(

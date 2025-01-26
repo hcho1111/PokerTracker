@@ -1,7 +1,7 @@
 import dash
 from dash import html, Input, Output, dcc, callback, State
 import dash_bootstrap_components as dbc
-from api.ledger import get_leaderboard, get_recent_ledgers
+from api.ledger import get_leaderboard, get_recent_ledgers, get_net_over_time_figure
 from plotly.express.colors import sample_colorscale
 from sklearn.preprocessing import minmax_scale
 from datetime import datetime, timedelta, date
@@ -12,7 +12,7 @@ dash.register_page(__name__, path="/")
 
 leaderboard_card = dbc.Card(
     [
-        html.H3("Leaderboard 📈"),
+        html.H3("Leaderboard 🏆"),
         html.Div(
             [
                 dbc.Button(
@@ -248,25 +248,39 @@ def get_recent_ledgers_card():
     )
 
 
+def get_cum_sum_card():
+    return dbc.Card([
+        html.H3("Net Over Time 📈"),
+        dcc.Graph(figure=get_net_over_time_figure())
+    ])
+
 # fbclid param ignored. Added from FB messenger.
 def layout(fbclid=""):
-    return dbc.Row(
-        [
-            dbc.Col([dbc.Row(children=[leaderboard_card])], md=6),
-            dbc.Col(
-                [
-                    dbc.Row(children=[get_recent_ledgers_card()]),
-                    dbc.Row(
-                        children=[get_top_username_count_card()],
-                        style={"marginTop": "24px"},
-                    ),
-                ],
-                md=6,
-            ),
-            dcc.Store(id="leaderboard_store"),
+    return dbc.Col([
+        dbc.Row([
+            get_cum_sum_card()
         ],
-        className="g-5",
-    )
+            style={"marginBottom": "24px"},
+        ),
+        dbc.Row(
+            [
+                dbc.Col([dbc.Row(children=[leaderboard_card])], md=6),
+                dbc.Col(
+                    [
+                        dbc.Row(children=[get_recent_ledgers_card()]),
+                        dbc.Row(
+                            children=[get_top_username_count_card()],
+                            style={"marginTop": "24px"},
+                        ),
+                    ],
+                    md=6,
+                ),
+                dcc.Store(id="leaderboard_store"),
+            ],
+            className="g-5",
+        )
+    ])
+  
 
 
 @callback(

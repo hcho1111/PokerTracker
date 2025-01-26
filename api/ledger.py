@@ -7,7 +7,7 @@ from api.players import _get_player_id_by_poker_now_id, _create_player
 from api.common import create_connection
 from numpy import nan
 from datetime import date, timedelta
-
+import plotly.express as px
 
 def new_ledger_from_bytes(filename: str, csv_raw: str):
     content_type, content_string = csv_raw.split(",")
@@ -194,3 +194,37 @@ def _create_ledger_row(
         "INSERT INTO ledgerrows (pokernow_ledger_id,player_id,session_start,buy_in,net) VALUES ('%s','%s',%s,'%s','%s')"
         % (pokernow_ledger_id, player_id, parsed_session_start, buy_in, net)
     )
+
+def get_net_over_time_figure():
+    with create_connection() as connection:
+        cursor = connection.cursor()
+        cursor.execute("""
+            SELECT CONCAT(players.firstname, ' ', players.lastname) as name, f.date, f.RunningTotal
+            FROM players,
+            LATERAL get_cum_sum(players.id) f
+            ORDER BY f.date
+        """)
+        data = pd.DataFrame(cursor.fetchall())
+        data = data.rename(columns={0: "Player", 1:"Date", 2: "Net"})
+        data['Net'] = data['Net'].div(100)
+
+        def add_clamps(dataframe):
+            max_date = max(dataframe['Date'])
+            players = dataframe['Player'].unique()
+            for player in players:
+                player_rows = data.loc[data['Player'] == player]
+                latest_net = player_rows.loc[player_rows['Date'] == max(player_rows['Date'])]['Net'].values[0]
+                dataframe = pd.concat([
+                    dataframe,
+                    pd.DataFrame([[player, max_date, latest_net]],
+                        columns=['Player', 'Date', 'Net'])
+            ])
+            return dataframe
+        data = add_clamps(data)
+
+        leaderboard, _, _, _ = get_leaderboard()
+        fig = px.line(data, x="Date", y="Net", color="Player", category_orders={"Player": [" ".join([x[0], x[1]]) for x in leaderboard]})
+        fig.update_layout(
+            margin=dict(l=20, r=20, t=30, b=20),
+        )
+        return fig
