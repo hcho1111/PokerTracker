@@ -37,3 +37,11 @@
 }
 
 a:visited { text-decoration: none; color:purple; }
+
+p {
+  margin-bottom: 0;
+}
+
+.me-1 {
+  margin-left: 8px;
+}

@@ -28,6 +28,7 @@ api = Api(server)
 
 pio.templates.default = "plotly_white"
 
+
 def serve_layout():
     return html.Div(
         [
@@ -69,4 +70,4 @@ def upload_ledger():
 
 
 if __name__ == "__main__":
-    server.run(debug=not IS_PROD)
+    server.run(debug=not IS_PROD, threaded=True)
